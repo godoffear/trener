@@ -1,6 +1,6 @@
 // Тренер — экраны и навигация. Ванильный JS без зависимостей.
 // Отрисовка: функции v*() возвращают HTML-строку, клики ловит один обработчик по data-a.
-const APP_VERSION = '0.7';
+const APP_VERSION = '0.7.1';
 
 // ───── Даты ─────
 const pad = n => String(n).padStart(2, '0');
@@ -285,10 +285,10 @@ function sheetAdd(dayId) {
 }
 
 // ───── Техника упражнения ─────
-// Фото старт/финиш на всю ширину, целиком, без обрезки
+// Фото старт/финиш на всю ширину, целиком, без обрезки — везде под спойлером «Фото»
 function photosHTML(e) {
   const f = (n, t) => `<figure><img src="img/ex/${e.img}/${n}.jpg" alt="${t}" loading="lazy"><figcaption>${t}</figcaption></figure>`;
-  return `<div class="pics full">${f(0, 'Старт')}${f(1, 'Финиш')}</div>${e.photo ? `<p class="note" style="margin:0 0 8px">${esc(e.photo)}</p>` : ''}`;
+  return `<details class="fold photos"><summary>Фото</summary><div class="pics full">${f(0, 'Старт')}${f(1, 'Финиш')}</div>${e.photo ? `<p class="note" style="margin:0 0 8px">${esc(e.photo)}</p>` : ''}</details>`;
 }
 function sheetTech(id) {
   const e = EX[id];

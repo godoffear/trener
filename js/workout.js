@@ -83,7 +83,7 @@ function vWorkout() {
   h += `<div class="card wo">
     ${w.cur === 0 ? `<p class="quote">${esc(quoteFor(new Date()))}</p>` : ''}
     <div class="wo-name" data-a="tech" data-ex="${it.ex}"><h2>${esc(e.name)}${it.orig ? ' <span class="tag">замена</span>' : ''}</h2><span class="muted small">Техника ›</span></div>
-    <details class="fold photos"><summary>Фото</summary>${photosHTML(e)}</details>
+    ${photosHTML(e)}
     <div class="cue"><b>${esc(e.cue)}</b><span class="muted small">Темп: ${esc(e.tempo)}</span></div>
     <div class="wo-info"><div><span class="muted">Сегодня</span> ${repsLabel(Object.assign({ ex: it.ex }, it.plan))}${rec != null && (e.type === 'w' || e.type === 'assist') ? ` · ${e.type === 'assist' ? 'помощь ' : ''}${fmt(rec)} кг` : ''}${e.equip === 'dumbbell' ? ' · на гантель' : ''}</div>
       ${prev ? `<div><span class="muted">В прошлый раз</span> ${workSets(prev.it).map(s => setText(e, s)).join(', ')}</div>` : ''}
