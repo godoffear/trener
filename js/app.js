@@ -1,6 +1,6 @@
 // Тренер — экраны и навигация. Ванильный JS без зависимостей.
 // Отрисовка: функции v*() возвращают HTML-строку, клики ловит один обработчик по data-a.
-const APP_VERSION = '0.6';
+const APP_VERSION = '0.7';
 
 // ───── Даты ─────
 const pad = n => String(n).padStart(2, '0');
@@ -24,7 +24,6 @@ const I = {
   prog: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 7v10M18 7v10M3 10v4M21 10v4M6 12h12"/></svg>',
   stats: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19h16M6 15l4-5 4 3 5-7"/></svg>',
   more: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>',
-  mic: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="20" height="20"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>',
   check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"/></svg>',
 };
 
@@ -122,15 +121,18 @@ function vToday() {
   if (isTrain(p)) {
     const day = D.program.days[p], items = dayItems(p);
     h += `<div class="card"><div class="card-h"><h2>${esc(day.name)}</h2>${past ? '<span class="tag warn">пропущено</span>' : `<span class="tag">≈ ${dayMinutes({ items })} мин</span>`}</div>`;
+    if (sel.getDay() === 1 && !past) h += isToday && weighedOn(key)
+      ? `<p class="weigh-line done">${I.check} Взвесился — ${fmt(D.settings.weight)} кг</p>`
+      : `<p class="weigh-line"${isToday ? ' data-a="weighopen"' : ''}>⚖ Понедельник — сначала взвесься${isToday ? ' <b>›</b>' : ', потом тренировка'}</p>`;
+    const todayFree = !doneOn(tk) && !D.active;
+    if (isToday) h += `<button class="btn main" style="margin-bottom:12px" data-a="start" data-d="${p}">Начать тренировку</button>`;
+    else if (past && todayFree) h += `<button class="btn" style="margin-bottom:12px" data-a="start" data-d="${p}">Сделать сегодня</button>`;
     if (!past) h += `<p class="quote">${esc(quoteFor(sel))}</p>`;
     const pick = items.filter(needsPick).length, weighted = items.filter(x => EX[x.ex].type === 'w' || EX[x.ex].type === 'assist').length;
     if (pick && !past) h += `<p class="hint">${pick === weighted ? 'Первая тренировка — веса подберёшь по ходу' : 'Где веса нет — подберёшь по ходу'}</p>`;
     h += '<ul class="exl">';
     for (const x of items) h += `<li class="tap" data-a="tech" data-ex="${x.ex}"><div class="n"><b>${esc(EX[x.ex].name)}</b><span>${repsLabel(x)}${perDb(x)}</span></div><div class="w">${workLabel(x)}</div></li>`;
     h += '</ul>';
-    const todayFree = !doneOn(tk) && !D.active;
-    if (isToday) h += `<button class="btn main" data-a="start" data-d="${p}">Начать тренировку</button>`;
-    else if (past && todayFree) h += `<button class="btn" data-a="start" data-d="${p}">Сделать сегодня</button>`;
     h += '</div>';
     if (isToday && items.some(x => x.ex === 'gravitron')) h += vPull();
   } else {
@@ -169,7 +171,11 @@ function racionWriteWeight(key, v) {
 function maybeWeigh() {
   const now = new Date(), key = dk(now);
   if (now.getDay() !== 1 || D.settings.weight == null || sheetOpen || tab === 'workout') return;
-  if (D.settings.weighSkip === key || D.settings.weighed === key || racionHasWeight(key) || doneOn(key)) return;
+  if (D.settings.weighSkip === key || weighedOn(key) || doneOn(key)) return;
+  sheetWeigh();
+}
+const weighedOn = key => D.settings.weighed === key || racionHasWeight(key);
+function sheetWeigh() {
   openSheet(`<h2>Понедельник — сначала взвесься</h2>
     <p class="muted" style="margin:0 0 14px">Встань на весы до тренировки. Вес запишу в Рацион и сюда — для пути к подтягиванию.</p>
     <div class="field"><input class="inp" id="wg" inputmode="decimal" placeholder="${fmt(D.settings.weight)} кг"></div>
@@ -279,14 +285,17 @@ function sheetAdd(dayId) {
 }
 
 // ───── Техника упражнения ─────
+// Фото старт/финиш на всю ширину, целиком, без обрезки
+function photosHTML(e) {
+  const f = (n, t) => `<figure><img src="img/ex/${e.img}/${n}.jpg" alt="${t}" loading="lazy"><figcaption>${t}</figcaption></figure>`;
+  return `<div class="pics full">${f(0, 'Старт')}${f(1, 'Финиш')}</div>${e.photo ? `<p class="note" style="margin:0 0 8px">${esc(e.photo)}</p>` : ''}`;
+}
 function sheetTech(id) {
-  const e = EX[id], src = n => `img/ex/${e.img}/${n}.jpg`;
+  const e = EX[id];
   const subs = e.subs.map(s => `<button class="chip" data-a="tech" data-ex="${s}">${esc(EX[s].name)}</button>`).join('');
   const fold = (t, body) => `<details class="fold"><summary>${t}</summary>${body}</details>`;
   openSheet(`<h2>${esc(e.name)}</h2>
-    <div class="pics"><figure><img src="${src(0)}" alt="Старт" loading="lazy"><figcaption>Старт</figcaption></figure>
-      <figure><img src="${src(1)}" alt="Финиш" loading="lazy"><figcaption>Финиш</figcaption></figure></div>
-    ${e.photo ? `<p class="note" style="margin:0 0 8px">${esc(e.photo)}</p>` : ''}
+    ${photosHTML(e)}
     <div class="cue"><b>${esc(e.cue)}</b><span class="muted small">Темп: ${esc(e.tempo)}</span></div>
     <p class="muted small" style="margin:0 0 6px">${esc(e.muscles)}</p>
     ${fold('Техника', `<ol class="tech">${e.tech.map(t => `<li>${esc(t)}</li>`).join('')}</ol>`)}
@@ -335,7 +344,7 @@ function showUpdate() {
 // Окно, открытое без нажатия (приветствие), в историю не кладём — Chrome такую запись пропускает.
 let sheetOpen = false, sheetPushed = false;
 function openSheet(html) {
-  $('#sheet').innerHTML = `<div class="sheet-bg" data-a="sheetbg"><div class="sheet" role="dialog"><div class="grip"></div>${html}</div></div>`;
+  $('#sheet').innerHTML = `<div class="sheet-bg" data-a="sheetbg"><div class="sheet" role="dialog"><button class="sheet-x" data-a="sheetclose" aria-label="Закрыть">✕</button><div class="grip"></div>${html}</div></div>`;
   $('#sheet .sheet').scrollTop = 0;
   if (!sheetOpen && navigator.userActivation && navigator.userActivation.isActive) { history.pushState({ sheet: 1 }, ''); sheetPushed = true; }
   sheetOpen = true;
@@ -388,6 +397,7 @@ document.addEventListener('click', async ev => {
       const ok = racionWriteWeight(key, v);
       closeSheet(); render(); toast(ok ? `${fmt(D.settings.weight)} кг — записал в Рацион` : 'Записал. Рацион на этом телефоне не нашёл'); break;
     }
+    case 'weighopen': sheetWeigh(); break;
     case 'weighskip': D.settings.weighSkip = dk(new Date()); await saveKV('settings'); closeSheet(); break;
     case 'edit': sheetEdit(ds.d, +ds.i); break;
     case 'ed-n': { const f = $('#f-' + ds.f); f.value = Math.max(1, Math.min(8, (num(f.value) || 0) + +ds.v)); break; }

@@ -1,8 +1,9 @@
 // Экран тренировки: по одному упражнению на экран, подходы, таймер отдыха, голос, итог.
 // Незавершённая тренировка лежит в D.active (store kv) и сохраняется после каждого действия —
 // закрыл приложение посреди тренировки, открыл — продолжаешь с того же места.
-let entry = null, restTimer = 0, wakeLock = null, audioCtx = null, recNow = null, checkSt = null;
+let entry = null, restTimer = 0, wakeLock = null, audioCtx = null, checkSt = null;
 const saveActive = () => saveKV('active');
+let noteT = 0;
 const curItem = () => D.active.items[D.active.cur];
 const itemStep = it => it.plan.step != null ? it.plan.step : EX[it.ex].step;
 const workSets = it => (it.sets || []).filter(s => !s.warm);
@@ -56,7 +57,6 @@ function ensureEntry() {
     key,
     kg: last ? last.kg : rec != null ? rec : prevSet ? prevSet.kg : null,
     reps: last ? last.reps : prevSet ? prevSet.reps : it.plan.lo,
-    rir: last && last.rir != null ? last.rir : 2,
     sec: last ? last.sec : prevSet && prevSet.sec ? prevSet.sec : it.plan.lo,
   };
 }
@@ -83,7 +83,7 @@ function vWorkout() {
   h += `<div class="card wo">
     ${w.cur === 0 ? `<p class="quote">${esc(quoteFor(new Date()))}</p>` : ''}
     <div class="wo-name" data-a="tech" data-ex="${it.ex}"><h2>${esc(e.name)}${it.orig ? ' <span class="tag">замена</span>' : ''}</h2><span class="muted small">Техника ›</span></div>
-    <details class="fold photos"><summary>Фото</summary><div class="pics small"><img src="img/ex/${e.img}/0.jpg" alt="Старт" loading="lazy"><img src="img/ex/${e.img}/1.jpg" alt="Финиш" loading="lazy"></div></details>
+    <details class="fold photos"><summary>Фото</summary>${photosHTML(e)}</details>
     <div class="cue"><b>${esc(e.cue)}</b><span class="muted small">Темп: ${esc(e.tempo)}</span></div>
     <div class="wo-info"><div><span class="muted">Сегодня</span> ${repsLabel(Object.assign({ ex: it.ex }, it.plan))}${rec != null && (e.type === 'w' || e.type === 'assist') ? ` · ${e.type === 'assist' ? 'помощь ' : ''}${fmt(rec)} кг` : ''}${e.equip === 'dumbbell' ? ' · на гантель' : ''}</div>
       ${prev ? `<div><span class="muted">В прошлый раз</span> ${workSets(prev.it).map(s => setText(e, s)).join(', ')}</div>` : ''}
@@ -105,13 +105,12 @@ function vWorkout() {
   else {
     h += e.type === 'bw' ? stepper('reps', 'Повторы', entry.reps, 'numeric')
       : stepper('kg', kgLabel, entry.kg, 'decimal') + stepper('reps', 'Повторы', entry.reps, 'numeric');
-    h += `<div class="field line"><label>Запас</label><div class="chips rir">${[0, 1, 2, 3, 4].map(r => `<button class="chip${entry.rir === r ? ' on' : ''}" data-a="wo-rir" data-v="${r}">${r}</button>`).join('')}</div></div>`;
   }
   if (e.equip === 'barbell' && entry.kg) h += `<p class="note" style="margin:-6px 0 10px">${plates(entry.kg)}</p>`;
-  h += `<div class="row2"><button class="btn${recNow ? ' on' : ''}" data-a="wo-mic">${I.mic} ${recNow ? 'Слушаю…' : 'Голосом'}</button>
-      <button class="btn" data-a="wo-like" ${prev ? '' : 'disabled'}>Как в прошлый</button></div>
-    <button class="btn main" style="margin-top:8px" data-a="wo-log">Записать подход</button></div>
-    <div class="wo-tools"><button class="btn ghost" data-a="wo-swap">Заменить</button><button class="btn ghost" data-a="wo-disc">Дискомфорт</button><button class="btn ghost" data-a="wo-note">Заметка${it.note ? ' ✓' : ''}</button></div>`;
+  h += `<div class="row2"><button class="btn" data-a="wo-like" ${prev ? '' : 'disabled'}>Как в прошлый раз</button>
+      <button class="btn main" data-a="wo-log">Записать</button></div></div>
+    <textarea class="inp note-inp" id="n-text" rows="2" maxlength="300" placeholder="Комментарий: сиденье на 4, хват уже… Покажется в следующий раз">${esc(it.note || '')}</textarea>
+    <div class="wo-tools"><button class="btn ghost" data-a="wo-swap">Заменить</button><button class="btn ghost" data-a="wo-disc">Дискомфорт</button></div>`;
   const last = w.cur === n - 1;
   h += `<button class="btn ${done >= need ? 'main' : 'ghost'}" style="margin-top:8px" data-a="${last ? 'wo-finish' : 'wo-next'}">${last ? 'Завершить тренировку' : 'Следующее упражнение →'}</button></div>
     <button class="btn ghost danger" style="margin-top:4px" data-a="wo-cancel">Отменить без записи</button>`;
@@ -170,7 +169,7 @@ function logSet() {
   if (e.type === 'time') { if (!entry.sec) return toast('Впиши секунды'); s.sec = Math.round(entry.sec); }
   else {
     if (!entry.reps) return toast('Впиши повторы');
-    s.reps = Math.round(entry.reps); s.rir = entry.rir;
+    s.reps = Math.round(entry.reps);
     if (e.type !== 'bw') { if (entry.kg == null) return toast(e.type === 'assist' ? 'Впиши помощь' : 'Впиши вес'); s.kg = entry.kg; }
   }
   it.sets.push(s);
@@ -238,7 +237,7 @@ function sheetSet(i) {
   const f = (id, label, v, m) => `<div class="field"><label>${label}</label><input class="inp" id="${id}" inputmode="${m}" value="${v != null ? fmt(v) : ''}"></div>`;
   openSheet(`<h2>Подход ${i + 1}</h2>
     ${e.type === 'time' ? f('s-sec', 'Секунд', s.sec, 'numeric') : `<div class="row2">${e.type !== 'bw' ? f('s-kg', e.type === 'assist' ? 'Помощь, кг' : 'Кг', s.kg, 'decimal') : ''}${f('s-reps', 'Повторы', s.reps, 'numeric')}</div>
-      ${f('s-rir', 'Запас (0–4)', s.rir, 'numeric')}`}
+`}
     <button class="btn main" data-a="wo-set-save" data-i="${i}">Сохранить</button>
     <button class="btn ghost danger" style="margin-top:8px" data-a="wo-set-del" data-i="${i}">Удалить подход</button>`);
 }
@@ -250,7 +249,16 @@ function swapChoices(ex) {
 function sheetSwap() {
   const it = curItem();
   openSheet(`<h2>Заменить на сегодня</h2><p class="muted small" style="margin:-4px 0 10px">Тренажёр занят или неудобно. Программа не меняется.</p>
-    <ul class="exl ex-pick">${swapChoices(it.ex).map(id => `<li data-a="wo-swap-to" data-ex="${id}"><div class="n"><b>${esc(EX[id].name)}</b><span>${esc(EX[id].muscles)}</span></div><div class="w muted">›</div></li>`).join('')}</ul>`);
+    <ul class="exl ex-pick">${swapChoices(it.ex).map(id => `<li data-a="wo-swap-view" data-ex="${id}"><div class="n"><b>${esc(EX[id].name)}</b><span>${esc(EX[id].muscles)}</span></div><div class="w muted">›</div></li>`).join('')}</ul>`);
+}
+// Просмотр упражнения перед заменой: фото, подсказка, техника → «Выбрать» или «К списку»
+function sheetSwapView(id) {
+  const e = EX[id];
+  openSheet(`<h2>${esc(e.name)}</h2>${photosHTML(e)}
+    <p class="muted small" style="margin:0 0 6px">${esc(e.muscles)}</p>
+    <div class="cue"><b>${esc(e.cue)}</b><span class="muted small">Темп: ${esc(e.tempo)}</span></div>
+    <ol class="tech">${e.tech.map(t => `<li>${esc(t)}</li>`).join('')}</ol>
+    <div class="row2 sticky-actions"><button class="btn" data-a="wo-swap">← К списку</button><button class="btn main" data-a="wo-swap-to" data-ex="${id}">Выбрать</button></div>`);
 }
 const ZONES = ['Плечо', 'Локоть', 'Запястье', 'Шея', 'Спина', 'Поясница', 'Колено', 'Другое'];
 let discSt = null;
@@ -265,34 +273,11 @@ function sheetDiscAfter() {
   const it = curItem(), prev = lastSession(it.ex), twice = prev && prev.it.disc && prev.it.disc.length;
   const subs = EX[it.ex].subs;
   openSheet(`<h2>Записал</h2><p class="muted" style="margin:0 0 12px">Прибавки по этому упражнению не будет. Если болит — попробуй замену:</p>
-    <div class="chips" style="margin-bottom:14px">${subs.map(id => `<button class="chip" data-a="wo-swap-to" data-ex="${id}">${esc(EX[id].name)}</button>`).join('')}</div>
+    <div class="chips" style="margin-bottom:14px">${subs.map(id => `<button class="chip" data-a="wo-swap-view" data-ex="${id}">${esc(EX[id].name)}</button>`).join('')}</div>
     ${twice ? `<div class="warnbox">Второй раз подряд на этом упражнении. Заменить его в программе насовсем?</div>
       <div class="chips" style="margin-bottom:14px">${subs.map(id => `<button class="chip" data-a="wo-prog-swap" data-ex="${id}">${esc(EX[id].name)}</button>`).join('')}</div>` : ''}
     <button class="btn" data-a="sheetclose">Продолжить как есть</button>`);
 }
-function sheetNote() {
-  const it = curItem();
-  openSheet(`<h2>Заметка</h2><p class="muted small" style="margin:-4px 0 10px">Покажется в следующий раз на этом упражнении.</p>
-    <div class="field"><input class="inp" id="n-text" maxlength="120" value="${esc(it.note || '')}" placeholder="сиденье на 4, хват уже"></div>
-    <button class="btn main" data-a="wo-note-save">Сохранить</button>`);
-}
-
-// ───── Голос ─────
-function micToggle() {
-  if (recNow) { try { recNow.stop(); } catch (e) {} recNow = null; render(); return; }
-  readEntry();
-  const it = curItem(), e = EX[it.ex];
-  recNow = listen(text => {
-    recNow = null;
-    const p = parseSpoken(text, e.type);
-    Object.assign(entry, p);
-    const full = e.type === 'time' ? p.sec : e.type === 'bw' ? p.reps : p.kg != null && p.reps;
-    if (full) { toast(`Записал: «${text}»`); logSet(); }
-    else { toast(`Услышал: «${text}» — проверь и запиши`); render(); }
-  }, err => { recNow = null; if (err) toast(err); render(); });
-  render();
-}
-
 // ───── Клики экрана тренировки ─────
 document.addEventListener('click', async ev => {
   const el = ev.target.closest('[data-a]'); if (!el) return;
@@ -319,25 +304,24 @@ document.addEventListener('click', async ev => {
       if (ds.f === 'sec') entry.sec = Math.max(5, (entry.sec || 0) + d * 5);
       render(); break;
     }
-    case 'wo-rir': readEntry(); entry.rir = +ds.v; render(); break;
     case 'wo-log': logSet(); break;
     case 'wo-like': {
       const it = curItem(), prev = lastSession(it.ex); if (!prev) return;
       const ps = workSets(prev.it), s = ps[workSets(it).length] || ps[ps.length - 1];
-      Object.assign(entry, { kg: s.kg != null ? s.kg : entry.kg, reps: s.reps || entry.reps, rir: s.rir != null ? s.rir : entry.rir, sec: s.sec || entry.sec });
+      Object.assign(entry, { kg: s.kg != null ? s.kg : entry.kg, reps: s.reps || entry.reps, sec: s.sec || entry.sec });
       render(); break;
     }
-    case 'wo-mic': micToggle(); break;
     case 'wo-rest-add': w.restUntil = Math.max(w.restUntil, Date.now()) + 30000; saveActive(); restLoop(); { const t = $('#rest-t'); if (t) t.textContent = mmss(w.restUntil - Date.now()); } break;
     case 'wo-rest-skip': w.restUntil = 0; saveActive(); clearInterval(restTimer); render(); break;
     case 'wo-set': sheetSet(+ds.i); break;
     case 'wo-set-save': {
       const s = curItem().sets[+ds.i], g = id => { const x = $(id); return x ? num(x.value) : null; };
-      if ($('#s-sec')) s.sec = g('#s-sec'); else { if ($('#s-kg')) s.kg = g('#s-kg'); s.reps = g('#s-reps'); const r = g('#s-rir'); s.rir = r != null ? Math.max(0, Math.min(4, Math.round(r))) : s.rir; }
+      if ($('#s-sec')) s.sec = g('#s-sec'); else { if ($('#s-kg')) s.kg = g('#s-kg'); s.reps = g('#s-reps'); }
       saveActive(); entry = null; closeSheet(); render(); break;
     }
     case 'wo-set-del': curItem().sets.splice(+ds.i, 1); saveActive(); entry = null; closeSheet(); render(); break;
     case 'wo-swap': sheetSwap(); break;
+    case 'wo-swap-view': sheetSwapView(ds.ex); break;
     case 'wo-swap-to': {
       const it = curItem();
       if (it.sets.length && !confirm('Записанные подходы этого упражнения сбросятся. Заменить?')) return;
@@ -359,8 +343,7 @@ document.addEventListener('click', async ev => {
       it.orig = it.orig || it.ex; it.ex = ds.ex; if (!it.sets.length) entry = null;
       saveActive(); closeSheet(); render(); toast('Заменил в программе'); break;
     }
-    case 'wo-note': sheetNote(); break;
-    case 'wo-note-save': curItem().note = $('#n-text').value.trim(); saveActive(); closeSheet(); render(); break;
   }
 });
-document.addEventListener('input', ev => { if (entry && /^e-/.test(ev.target.id)) entry[ev.target.id.slice(2)] = num(ev.target.value); });
+document.addEventListener('input', ev => {
+  if (ev.target.id === 'n-text' && D.active) { curItem().note = ev.target.value.trim(); clearTimeout(noteT); noteT = setTimeout(saveActive, 400); } if (entry && /^e-/.test(ev.target.id)) entry[ev.target.id.slice(2)] = num(ev.target.value); });

@@ -218,3 +218,20 @@ body.in-workout #app{padding-bottom:calc(120px + var(--safe-b))}
 details.photos{border-top:0;margin:4px 0 6px}
 details.photos>summary{min-height:40px;color:var(--muted);font-size:14px}
 details.photos .pics.small{margin-bottom:6px}
+
+/* 0.7: фото целиком на всю ширину, крестик у окон, комментарий полем */
+.pics.full{display:grid;grid-template-columns:1fr;gap:8px;margin-bottom:10px}
+.pics.full figure{margin:0;position:relative}
+.pics.full img{width:100%;height:auto;aspect-ratio:auto;object-fit:contain;border-radius:12px;background:#fff;display:block}
+@media (orientation:landscape) and (min-width:700px){.pics.full{grid-template-columns:1fr 1fr}}
+.sheet{position:relative}
+.sheet-x{position:sticky;top:0;float:right;z-index:2;width:44px;height:44px;margin:-4px -8px 0 8px;border:0;border-radius:50%;background:var(--card2);color:var(--text);font-size:18px;line-height:44px;text-align:center;cursor:pointer}
+.sheet h2{padding-right:4px}
+.note-inp{display:block;width:100%;min-height:56px;font-size:15px;font-weight:500;resize:vertical;margin:0 0 10px;line-height:1.4}
+.wo-tools{grid-template-columns:1fr 1fr}
+.sticky-actions{position:sticky;bottom:calc(-16px - var(--safe-b));background:var(--card);padding:10px 0 4px}
+
+.weigh-line{display:flex;align-items:center;gap:8px;margin:0 0 12px;padding:10px 12px;border-radius:12px;background:rgba(198,241,53,.1);color:var(--acc);font-weight:700;font-size:14px;cursor:pointer}
+.weigh-line b{margin-left:auto}
+.weigh-line.done{background:var(--card2);color:var(--muted);cursor:default}
+.weigh-line svg{width:16px;height:16px}
