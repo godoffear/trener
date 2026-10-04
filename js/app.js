@@ -1,6 +1,6 @@
 // Тренер — экраны и навигация. Ванильный JS без зависимостей.
 // Отрисовка: функции v*() возвращают HTML-строку, клики ловит один обработчик по data-a.
-const APP_VERSION = '0.3';
+const APP_VERSION = '0.3.1';
 
 // ───── Даты ─────
 const pad = n => String(n).padStart(2, '0');
@@ -106,7 +106,8 @@ function vToday() {
   if (isTrain(p)) {
     const day = D.program.days[p], items = dayItems(p), done = D.workouts.find(w => w.date === key && w.done);
     h += `<div class="card"><div class="card-h"><h2>${esc(day.name)}</h2><span class="tag">≈ ${dayMinutes({ items })} мин</span></div>`;
-    if (items.some(needsPick)) h += `<p class="hint">Первая тренировка — веса подберёшь по ходу</p>`;
+    const pick = items.filter(needsPick).length, weighted = items.filter(x => EX[x.ex].type === 'w' || EX[x.ex].type === 'assist').length;
+    if (pick) h += `<p class="hint">${pick === weighted ? 'Первая тренировка — веса подберёшь по ходу' : 'Где веса нет — подберёшь по ходу'}</p>`;
     h += '<ul class="exl">';
     for (const x of items) h += `<li class="tap" data-a="tech" data-ex="${x.ex}"><div class="n"><b>${esc(EX[x.ex].name)}</b><span>${repsLabel(x)}${perDb(x)}</span></div><div class="w">${workLabel(x)}</div></li>`;
     h += '</ul>';
@@ -354,6 +355,11 @@ document.addEventListener('change', async ev => {
   catch (e) { $('#app').innerHTML = `<div class="card">Не открылась база данных: ${esc(e.message)}</div>`; return; }
   render();
   if (D.settings.weight == null) sheetWelcome();
+  // Приложение могли оставить открытым с вечера: при возврате на экран и в полночь перерисовываем день
+  let shown = dk(new Date());
+  const refreshDay = () => { const k = dk(new Date()); if (k !== shown) { shown = k; if (!sheetOpen) render(); } };
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshDay(); });
+  setInterval(refreshDay, 60000);
   // Офлайн и установка как приложение: service worker из корня (sw.js)
   if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(() => {});
 })();
