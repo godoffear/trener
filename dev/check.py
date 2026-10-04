@@ -80,7 +80,7 @@ async def main():
 
 async def weigh(b):
     """Понедельник: окно «сначала взвесься», вес уходит в Рацион (racion-v3.w)."""
-    ctx = await b.new_context(viewport={'width': 360, 'height': 780}); pg = await ctx.new_page(); errs = []
+    ctx = await b.new_context(viewport={'width': 360, 'height': 780}, accept_downloads=True); pg = await ctx.new_page(); errs = []
     pg.on('pageerror', lambda e: errs.append(str(e)))
     await pg.add_init_script("(()=>{const RD=Date,fix=new RD('2026-10-05T09:40').getTime(),t0=RD.now();class FD extends RD{constructor(...a){if(a.length)super(...a);else super(fix+RD.now()-t0)}static now(){return fix+RD.now()-t0}};window.Date=FD})();")
     await pg.goto(BASE + '/'); await pg.wait_for_timeout(300)
@@ -98,6 +98,10 @@ async def weigh(b):
     await pg.reload(); await pg.wait_for_timeout(400)
     ok(not await pg.query_selector('[data-a="weigh"]'), 'второй раз в этот день не спрашивает')
     ok(await pg.query_selector('.quote'), 'фраза дня на «Сегодня»')
+    await pg.click('[data-a="tab"][data-k="more"]')
+    async with pg.expect_download(timeout=5000) as d: await pg.click('[data-a="export"]')
+    fn = (await d.value).suggested_filename
+    ok(fn.startswith('Тренер_2026-10-05_09-') and fn.endswith('.json'), f'копия скачивается: {fn}')
     if errs: print('Ошибки JS:', errs)
     await ctx.close()
 

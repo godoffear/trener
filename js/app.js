@@ -1,6 +1,6 @@
 // Тренер — экраны и навигация. Ванильный JS без зависимостей.
 // Отрисовка: функции v*() возвращают HTML-строку, клики ловит один обработчик по data-a.
-const APP_VERSION = '0.5.1';
+const APP_VERSION = '0.5.2';
 
 // ───── Даты ─────
 const pad = n => String(n).padStart(2, '0');
@@ -439,7 +439,7 @@ document.addEventListener('click', async ev => {
     case 'export': {
       const data = await dbExport();
       const url = URL.createObjectURL(new Blob([JSON.stringify(data)], { type: 'application/json' }));
-      const l = document.createElement('a'); l.href = url; l.download = `trener-${dk(new Date())}.json`; l.click();
+      const l = document.createElement('a'); l.href = url; const t = new Date(); l.download = `Тренер_${dk(t)}_${pad(t.getHours())}-${pad(t.getMinutes())}.json`; l.click();  // Тренер_2026-10-04_18-30.json
       setTimeout(() => URL.revokeObjectURL(url), 5000); break;
     }
     case 'import': $('#importfile').click(); break;
