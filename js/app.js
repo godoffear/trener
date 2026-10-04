@@ -1,6 +1,6 @@
 // Тренер — экраны и навигация. Ванильный JS без зависимостей.
 // Отрисовка: функции v*() возвращают HTML-строку, клики ловит один обработчик по data-a.
-const APP_VERSION = '0.3.1';
+const APP_VERSION = '0.4';
 
 // ───── Даты ─────
 const pad = n => String(n).padStart(2, '0');
@@ -24,6 +24,7 @@ const I = {
   prog: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 7v10M18 7v10M3 10v4M21 10v4M6 12h12"/></svg>',
   stats: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19h16M6 15l4-5 4 3 5-7"/></svg>',
   more: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>',
+  mic: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="20" height="20"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>',
   check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"/></svg>',
 };
 
@@ -80,50 +81,105 @@ let tab = 'today';
 const $ = s => document.querySelector(s);
 
 function render() {
-  const v = { today: vToday, prog: vProgram, stats: vStats, more: vMore }[tab];
+  const v = { today: vToday, prog: vProgram, stats: vStats, more: vMore, workout: vWorkout }[tab];
   $('#app').innerHTML = v();
+  document.body.classList.toggle('in-workout', tab === 'workout');
+  keepAwake();
   $('#tabs').innerHTML = [['today', 'Сегодня'], ['prog', 'Программа'], ['stats', 'Прогресс'], ['more', 'Ещё']]
     .map(([k, t]) => `<button data-a="tab" data-k="${k}" class="${tab === k ? 'on' : ''}">${I[k]}${t}</button>`).join('');
 }
 
 // ───── Сегодня ─────
-// Полоса недели: буква дня, число и точка — силовая (контур), сделана (заливка), ходьба (голубая).
-function vWeek(now) {
-  const m = monday(now), tk = dk(now);
-  let h = '<div class="week">';
+// selDay — выбранный день (ключ ГГГГ-ММ-ДД) или null = сегодня. Полоса недели листается стрелками и свайпом.
+let selDay = null;
+const doneOn = key => D.workouts.find(w => w.date === key && w.done);
+
+function vWeek(sel, now) {
+  const m = monday(sel), tk = dk(now), sk = dk(sel);
+  let h = '<div class="weekbar"><button class="wnav" data-a="wk" data-v="-7" aria-label="Прошлая неделя">‹</button><div class="week" id="week">';
   for (let i = 0; i < 7; i++) {
     const d = addDays(m, i), key = dk(d), p = planOf(d);
-    const trained = D.workouts.some(w => w.date === key && w.done);
-    const dot = trained ? 'done' : isTrain(p) ? 'train' : p === 'walk' ? 'walk' : '';
-    h += `<div class="wd${key === tk ? ' today' : ''}"><b>${WD[d.getDay()]}</b><span class="num">${d.getDate()}</span><i class="${dot}"></i></div>`;
+    const dot = doneOn(key) ? 'done' : isTrain(p) ? 'train' : p === 'walk' ? 'walk' : '';
+    h += `<button class="wd${key === tk ? ' today' : ''}${key === sk ? ' sel' : ''}" data-a="day" data-k="${key}"><b>${WD[d.getDay()]}</b><span class="num">${d.getDate()}</span><i class="${dot}"></i></button>`;
   }
-  return h + '</div>';
+  return h + '</div><button class="wnav" data-a="wk" data-v="7" aria-label="Следующая неделя">›</button></div>';
 }
 
 function vToday() {
-  const now = new Date(), p = planOf(now), key = dk(now);
-  let h = `<div class="top"><h1>${fmtDate(now)}</h1></div>` + vWeek(now);
+  const now = new Date(), tk = dk(now);
+  if (selDay === tk) selDay = null;
+  const sel = selDay ? pk(selDay) : now, key = dk(sel), p = planOf(sel);
+  const isToday = key === tk, past = key < tk;
+  let h = `<div class="top"><h1>${fmtDate(sel)}</h1>${isToday ? '' : '<button class="btn small-btn" data-a="day" data-k="">Сегодня</button>'}</div>` + vWeek(sel, now);
+  if (isToday && D.active) {
+    const w = D.active, day = D.program.days[w.day], n = w.items.reduce((a, it) => a + workSets(it).length, 0);
+    return h + `<div class="card"><div class="card-h"><h2>${esc(day ? day.name : 'Тренировка')}</h2><span class="tag acc">идёт</span></div>
+      <p class="muted" style="margin:0 0 14px">Записано подходов: ${n}. Упражнение ${w.cur + 1} из ${w.items.length}.</p>
+      <button class="btn main" data-a="resume">Продолжить тренировку</button></div>`;
+  }
+  const done = doneOn(key);
+  if (done) return h + vDone(done);
   if (isTrain(p)) {
-    const day = D.program.days[p], items = dayItems(p), done = D.workouts.find(w => w.date === key && w.done);
-    h += `<div class="card"><div class="card-h"><h2>${esc(day.name)}</h2><span class="tag">≈ ${dayMinutes({ items })} мин</span></div>`;
+    const day = D.program.days[p], items = dayItems(p);
+    h += `<div class="card"><div class="card-h"><h2>${esc(day.name)}</h2>${past ? '<span class="tag warn">пропущено</span>' : `<span class="tag">≈ ${dayMinutes({ items })} мин</span>`}</div>`;
     const pick = items.filter(needsPick).length, weighted = items.filter(x => EX[x.ex].type === 'w' || EX[x.ex].type === 'assist').length;
-    if (pick) h += `<p class="hint">${pick === weighted ? 'Первая тренировка — веса подберёшь по ходу' : 'Где веса нет — подберёшь по ходу'}</p>`;
+    if (pick && !past) h += `<p class="hint">${pick === weighted ? 'Первая тренировка — веса подберёшь по ходу' : 'Где веса нет — подберёшь по ходу'}</p>`;
     h += '<ul class="exl">';
     for (const x of items) h += `<li class="tap" data-a="tech" data-ex="${x.ex}"><div class="n"><b>${esc(EX[x.ex].name)}</b><span>${repsLabel(x)}${perDb(x)}</span></div><div class="w">${workLabel(x)}</div></li>`;
     h += '</ul>';
-    h += done ? `<div class="btn ghost">${I.check} Тренировка сделана</div>` : `<button class="btn main" data-a="start">Начать тренировку</button>`;
+    const todayFree = !doneOn(tk) && !D.active;
+    if (isToday) h += `<button class="btn main" data-a="start" data-d="${p}">Начать тренировку</button>`;
+    else if (past && todayFree) h += `<button class="btn" data-a="start" data-d="${p}">Сделать сегодня</button>`;
     h += '</div>';
+    if (isToday && items.some(x => x.ex === 'gravitron')) h += vPull();
   } else {
-    const next = nextTraining(now);
+    const next = nextTraining(sel);
     h += `<div class="card"><h2>${p === 'walk' ? 'Ходьба' : 'Отдых'}</h2>
-      <p class="muted" style="margin:6px 0 0">${p === 'walk' ? '45–60 минут спокойным шагом.' : 'Силовой сегодня нет.'}</p>
+      <p class="muted" style="margin:6px 0 0">${p === 'walk' ? '45–60 минут спокойным шагом.' : 'Силовой нет.'}</p>
       ${next ? `<p class="note">Дальше — ${WD_FULL[next.d.getDay()]}: ${esc(next.day.name.toLowerCase())}.</p>` : ''}</div>`;
   }
   return h;
 }
-function nextTraining(now) {
-  for (let i = 1; i <= 7; i++) { const d = addDays(now, i), p = planOf(d); if (isTrain(p)) return { d, day: D.program.days[p] }; }
+function nextTraining(from) {
+  for (let i = 1; i <= 7; i++) { const d = addDays(from, i), p = planOf(d); if (isTrain(p)) return { d, day: D.program.days[p] }; }
   return null;
+}
+
+// Сделанная тренировка: что и как, рекорды — звёздочкой
+function vDone(w) {
+  const day = D.program.days[w.day], recs = new Set((w.records || []).map(r => r.ex));
+  const min = w.end && w.start ? Math.round((w.end - w.start) / 60000) : null, ton = tonnage(w);
+  let h = `<div class="card"><div class="card-h"><div><h2>${esc(day ? day.name : 'Тренировка')}</h2>
+    <div class="muted small">${[min ? min + ' мин' : '', ton ? ton.toLocaleString('ru-RU') + ' кг' : '', w.light ? 'облегчённо' : ''].filter(Boolean).join(' · ')}</div></div>
+    <span class="tag acc">сделано</span></div><ul class="exl">`;
+  for (const it of w.items) {
+    const e = EX[it.ex], sets = workSets(it); if (!sets.length) continue;
+    h += `<li class="tap" data-a="tech" data-ex="${it.ex}"><div class="n"><b>${esc(e.name)}</b><span>${sets.map(s => setText(e, s)).join(', ')}</span>
+      ${it.note ? `<span class="wo-note">${esc(it.note)}</span>` : ''}</div>${recs.has(it.ex) ? '<div class="w acc">★</div>' : ''}</li>`;
+  }
+  return h + `</ul><button class="btn" data-a="summary" data-id="${w.id}">Итог</button></div>`;
+}
+
+// Путь к первому подтягиванию: помощь в гравитроне → негативы (помощь < 30% веса) → чистое подтягивание
+function vPull() {
+  const bw = D.settings.weight, h = exHistory('gravitron');
+  const step = (D.program.days.B && (D.program.days.B.items.find(x => x.ex === 'gravitron') || {}).step) || EX.gravitron.step;
+  const best = it => { const s = workSets(it).filter(x => x.reps >= 6).map(x => x.kg); return s.length ? Math.min(...s) : null; };
+  const hist = h.map(x => best(x.it)).filter(x => x != null);
+  let body;
+  if (!hist.length || !bw) body = '<p class="muted" style="margin:0">Сегодня подбери помощь, с которой сделаешь 6–10 повторов. С неё начнётся путь.</p>';
+  else {
+    const first = hist[0], cur = hist[hist.length - 1], target = bw * 0.3;
+    const stage = cur <= 0 ? 3 : cur < target ? 2 : 1;
+    const left = stage === 1 ? Math.ceil((cur - target) / step + 0.0001) : Math.ceil(cur / step);
+    const pct = first > 0 ? Math.round((first - cur) / first * 100) : 100;
+    body = `<div><span class="num big">${fmt(cur)}</span> <span class="muted">кг помощи</span></div>
+      <div class="bar"><i style="width:${Math.max(4, pct)}%"></i></div>
+      <p class="muted small" style="margin:0">${stage === 1 ? `Этап 1 из 3: гравитрон + вис. До негативов — помощь меньше ${fmt(Math.round(target * 10) / 10)} кг, ≈ ${left} ${left === 1 ? 'шаг' : left < 5 ? 'шага' : 'шагов'} по ${fmt(step)} кг.`
+        : stage === 2 ? `Этап 2 из 3: негативы. До подтягивания без помощи ≈ ${left} ${left === 1 ? 'шаг' : left < 5 ? 'шага' : 'шагов'} по ${fmt(step)} кг.`
+        : 'Этап 3: подтягиваешься сам! 🎉'}</p>`;
+  }
+  return `<div class="card"><div class="card-h"><h2>Путь к подтягиванию</h2></div>${body}</div>`;
 }
 
 // ───── Программа ─────
@@ -235,6 +291,13 @@ function vMore() {
     <p class="muted small" style="text-align:center;margin-top:16px">Тренер ${APP_VERSION} · фото упражнений — free-exercise-db (public domain)</p>`;
 }
 
+function showUpdate() {
+  if ($('.update')) return;
+  const el = document.createElement('div'); el.className = 'update';
+  el.innerHTML = '<span>Вышла новая версия</span><button class="btn main" data-a="update">Обновить</button>';
+  document.body.appendChild(el);
+}
+
 // ───── Нижний лист ─────
 // Кнопка «Назад» на Android закрывает лист: при открытии кладём запись в историю.
 // Окно, открытое без нажатия (приветствие), в историю не кладём — Chrome такую запись пропускает.
@@ -273,10 +336,15 @@ document.addEventListener('click', async ev => {
   if (a === 'sheetbg') { if (ev.target === el) closeSheet(); return; }
   if (a === 'sched') return;
   switch (a) {
-    case 'tab': tab = ds.k; progEdit = false; render(); scrollTo(0, 0); break;
+    case 'tab': tab = ds.k; progEdit = false; if (ds.k === 'today') selDay = null; render(); scrollTo(0, 0); break;
     case 'progedit': progEdit = !progEdit; render(); break;
     case 'tech': sheetTech(ds.ex); break;
-    case 'start': toast('Экран тренировки — следующий этап'); break;
+    case 'start': sheetCheck(ds.d); break;
+    case 'resume': tab = 'workout'; render(); restLoop(); scrollTo(0, 0); break;
+    case 'day': selDay = ds.k || null; render(); break;
+    case 'wk': selDay = dk(addDays(selDay ? pk(selDay) : new Date(), +ds.v)); render(); break;
+    case 'summary': { const w = D.workouts.find(x => x.id === ds.id); if (w) sheetSummary(w); break; }
+    case 'update': location.reload(); break;
     case 'edit': sheetEdit(ds.d, +ds.i); break;
     case 'ed-n': { const f = $('#f-' + ds.f); f.value = Math.max(1, Math.min(8, (num(f.value) || 0) + +ds.v)); break; }
     case 'ed-rest': edit.rest = +ds.v; document.querySelectorAll('[data-a="ed-rest"]').forEach(c => c.classList.toggle('on', c === el)); break;
@@ -360,6 +428,21 @@ document.addEventListener('change', async ev => {
   const refreshDay = () => { const k = dk(new Date()); if (k !== shown) { shown = k; if (!sheetOpen) render(); } };
   document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshDay(); });
   setInterval(refreshDay, 60000);
-  // Офлайн и установка как приложение: service worker из корня (sw.js)
-  if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(() => {});
+  if (D.active) restLoop();
+  // Свайп по полосе недели — соседняя неделя
+  let tx = null;
+  document.addEventListener('touchstart', e => { tx = e.target.closest('#week') ? e.touches[0].clientX : null; }, { passive: true });
+  document.addEventListener('touchend', e => {
+    if (tx == null) return; const dx = e.changedTouches[0].clientX - tx; tx = null;
+    if (Math.abs(dx) > 50) { selDay = dk(addDays(selDay ? pk(selDay) : new Date(), dx < 0 ? 7 : -7)); render(); }
+  }, { passive: true });
+  // Офлайн и установка как приложение: service worker из корня (sw.js).
+  // Новый service worker берёт управление сам — показываем плашку «Вышла новая версия».
+  if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+    let had = !!navigator.serviceWorker.controller;
+    navigator.serviceWorker.addEventListener('controllerchange', () => { if (had) showUpdate(); had = true; });
+    navigator.serviceWorker.register('sw.js').then(reg => {
+      document.addEventListener('visibilitychange', () => { if (!document.hidden) reg.update().catch(() => {}); });
+    }).catch(() => {});
+  }
 })();

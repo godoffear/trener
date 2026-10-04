@@ -18,7 +18,7 @@ class Quiet(http.server.SimpleHTTPRequestHandler):
 srv = http.server.ThreadingHTTPServer(('127.0.0.1', 0), functools.partial(Quiet, directory=str(ROOT)))
 threading.Thread(target=srv.serve_forever, daemon=True).start()
 BASE = f'http://127.0.0.1:{srv.server_port}'
-WIDE = "[...document.querySelectorAll('#app *, .sheet *')].filter(e=>e.getBoundingClientRect().right>innerWidth+1).slice(0,3).map(e=>e.tagName+'.'+e.className)"
+WIDE = "[...document.querySelectorAll('#app *, .sheet *')].filter(e=>!e.closest('.wo-dots')&&e.getBoundingClientRect().right>innerWidth+1).slice(0,3).map(e=>e.tagName+'.'+e.className)"
 
 async def shot(pg, name, label):
     wide = await pg.evaluate(WIDE)
@@ -73,7 +73,70 @@ async def main():
             await pg.evaluate('history.back()'); await pg.wait_for_timeout(200)
             if errs: print('Ошибки JS:', errs)
             await ctx.close()
+        await flow(b)
         await b.close()
     srv.shutdown()
+
+async def flow(b):
+    """Тренировка целиком: дни недели, старт, подходы, отдых, замена, дискомфорт, итог, продолжение после перезапуска."""
+    ctx = await b.new_context(viewport={'width': 360, 'height': 780}); pg = await ctx.new_page(); errs = []
+    pg.on('pageerror', lambda e: errs.append(str(e))); pg.on('dialog', lambda d: asyncio.ensure_future(d.accept()))
+    await pg.add_init_script("(()=>{const RD=Date,fix=new RD('2026-10-06T10:00').getTime(),t0=RD.now();class FD extends RD{constructor(...a){if(a.length)super(...a);else super(fix+RD.now()-t0)}static now(){return fix+RD.now()-t0}};window.Date=FD})();")
+    await pg.goto(BASE + '/'); await pg.wait_for_timeout(300)
+    await pg.fill('#s-weight', '82,5'); await pg.click('[data-a="welcome"]')
+    ok = lambda c, t: print(f'  {t}:', 'OK' if c else 'НЕТ')
+    # дни: вчера (пн) — пропущено, стрелка назад, «Сегодня»
+    await pg.click('[data-a="day"][data-k="2026-10-05"]'); ok('пропущено' in await pg.inner_text('#app') and await pg.query_selector('[data-a="start"]'), 'прошедший день: «пропущено» и «Сделать сегодня»')
+    await pg.click('[data-a="wk"][data-v="-7"]'); ok('28 сентября' in await pg.inner_text('h1'), 'стрелка — прошлая неделя')
+    await pg.click('.top [data-a="day"]'); ok('6 октября' in await pg.inner_text('h1'), 'кнопка «Сегодня»')
+    await pg.click('[data-a="day"][data-k="2026-10-08"]'); ok('Ноги' in await pg.inner_text('#app') and not await pg.query_selector('[data-a="start"]'), 'будущий день: план без кнопки')
+    await pg.click('.top [data-a="day"]')
+    ok('Путь к подтягиванию' in await pg.inner_text('#app'), 'карточка подтягивания во вторник')
+    # старт
+    await pg.click('[data-a="start"]')
+    for k in ['sleep', 'energy', 'sore']: await pg.click(f'[data-a="ck"][data-k="{k}"][data-v="1"]')
+    ok(await pg.query_selector('[data-a="wo-begin"][data-light="1"]'), 'плохое самочувствие — предлагает облегчённо')
+    await pg.click('[data-a="wo-begin"][data-light="1"]'); await pg.wait_for_timeout(200)
+    ok('1 / 8' in await pg.inner_text('.wo-title') and 'облегчённо' in await pg.inner_text('.wo-title'), 'экран тренировки, облегчённый режим')
+    await pg.screenshot(path='/tmp/trener-wo-1.png', full_page=True)
+    # гравитрон: 3 подхода (4−1)
+    await pg.fill('#e-kg', '35'); await pg.fill('#e-reps', '8'); await pg.click('[data-a="wo-rir"][data-v="2"]'); await pg.click('[data-a="wo-log"]')
+    ok(await pg.query_selector('#rest'), 'таймер отдыха после подхода')
+    await pg.click('[data-a="wo-rest-add"]'); await pg.click('[data-a="wo-rest-skip"]'); ok(not await pg.query_selector('#rest'), '«+30 с» и «Хватит»')
+    await pg.click('[data-a="wo-log"]'); await pg.click('[data-a="wo-dec"][data-f="kg"]'); await pg.click('[data-a="wo-log"]')
+    ok((await pg.inner_text('.sets')).count('×') == 3 and '30' in await pg.inner_text('.sets'), 'три подхода, «−» снижает помощь на шаг')
+    await pg.click('[data-a="wo-next"]')
+    # тяга: разминка, замена, дискомфорт, заметка
+    await pg.click('[data-a="wo-warm"]'); ok(await pg.query_selector('.warm.on'), 'разминочный подход отмечен')
+    await pg.fill('#e-kg', '40'); await pg.fill('#e-reps', '10'); await pg.click('[data-a="wo-log"]')
+    await pg.click('[data-a="wo-disc"]'); await pg.click('[data-a="dz"][data-v="Плечо"]'); await pg.click('[data-a="dl"][data-v="2"]'); await pg.click('[data-a="wo-disc-save"]')
+    ok('Прибавки по этому' in await pg.inner_text('.sheet'), 'дискомфорт — без прибавки, предлагает замену')
+    await pg.click('[data-a="sheetclose"]')
+    await pg.click('[data-a="wo-note"]'); await pg.fill('#n-text', 'сиденье на 4'); await pg.click('[data-a="wo-note-save"]')
+    await pg.click('[data-a="wo-go"][data-i="2"]')
+    await pg.click('[data-a="wo-swap"]'); await pg.click('[data-a="wo-swap-to"]'); await pg.wait_for_timeout(200)
+    ok('замена' in await pg.inner_text('.wo'), 'замена на сегодня')
+    await pg.fill('#e-kg', '35'); await pg.fill('#e-reps', '12'); await pg.click('[data-a="wo-log"]')
+    await pg.screenshot(path='/tmp/trener-wo-2.png', full_page=True)
+    # перезапуск посреди тренировки
+    await pg.reload(); await pg.wait_for_timeout(500)
+    ok(await pg.query_selector('[data-a="resume"]'), 'после перезапуска — «Продолжить тренировку»')
+    await pg.click('[data-a="resume"]'); ok('3 / 8' in await pg.inner_text('.wo-title'), 'продолжает с того же упражнения')
+    for w_, h_ in [(780, 360), (360, 780)]:
+        await pg.set_viewport_size({'width': w_, 'height': h_}); await pg.wait_for_timeout(100)
+        wide = await pg.evaluate(WIDE); ok(not wide, f'{w_}×{h_} экран тренировки не вылезает {wide or ""}')
+        await pg.screenshot(path=f'/tmp/trener-wo-{w_}.png', full_page=True)
+    # голос: разбор без микрофона
+    v = await pg.evaluate("JSON.stringify(parseSpoken('шестьдесят два с половиной на восемь запас два','w'))")
+    ok(v == '{"rir":2,"kg":62.5,"reps":8}', 'голос: «шестьдесят два с половиной на восемь, запас два»')
+    # итог
+    await pg.click('[data-a="wo-finish"]'); await pg.wait_for_timeout(300)
+    ok(await pg.query_selector('.sum'), 'итог тренировки')
+    await pg.screenshot(path='/tmp/trener-wo-sum.png', full_page=True)
+    await pg.click('[data-a="sheetclose"]')
+    ok('сделано' in await pg.inner_text('#app') and 'сиденье на 4' in await pg.inner_text('#app'), 'день показывает сделанное и заметку')
+    await pg.screenshot(path='/tmp/trener-wo-done.png', full_page=True)
+    if errs: print('Ошибки JS:', errs)
+    await ctx.close()
 
 asyncio.run(main())
