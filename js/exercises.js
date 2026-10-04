@@ -344,6 +344,16 @@ const EX = {
   },
 
   // ───── Пресс ─────
+  bench_crunch: {
+    name: 'Скручивания лёжа на скамье', img: 'Crunches', group: 'abs', type: 'w', base: false, equip: 'body', step: 2.5,
+    muscles: 'Прямая мышца живота',
+    photo: 'На фото — на полу; на скамье движение то же',
+    tech: ['Ляг на горизонтальную скамью, стопы на её краю или на полу, колени согнуты', 'Руки на груди (можно с блином) или у висков — голову не тянуть', 'Скручивайся: лопатки отрываются, поясница прижата', 'Пауза наверху, медленно вниз, плечи не роняй до конца'],
+    cue: 'Рёбра к тазу, поясница прижата', tempo: '1 с вверх, пауза, 2 с вниз',
+    breath: 'Выдох при скручивании',
+    errors: ['Тянешь голову руками', 'Садишься полностью — работают сгибатели бедра', 'Рывки'],
+    subs: ['cable_crunch', 'rev_crunch'],
+  },
   crunch_m: {
     name: 'Скручивания в тренажёре', img: 'Ab_Crunch_Machine', group: 'abs', type: 'w', base: false, equip: 'machine', step: 5,
     muscles: 'Прямая мышца живота',
@@ -351,7 +361,7 @@ const EX = {
     cue: 'Рёбра к тазу', tempo: '1 с вниз, пауза, 2 с назад',
     breath: 'Выдох при скручивании',
     errors: ['Тянешь руками', 'Сгибаешься в тазу, а не в спине'],
-    subs: ['cable_crunch', 'rev_crunch'],
+    subs: ['bench_crunch', 'cable_crunch'],
   },
   cable_crunch: {
     name: 'Скручивания на блоке стоя на коленях', img: 'Cable_Crunch', group: 'abs', type: 'w', base: false, equip: 'cable', step: 5,
@@ -360,7 +370,7 @@ const EX = {
     cue: 'Скрутись в комок', tempo: '1 с вниз, 2 с вверх',
     breath: 'Выдох при скручивании',
     errors: ['Садишься на пятки вместо скручивания'],
-    subs: ['crunch_m'],
+    subs: ['bench_crunch'],
   },
   hlr: {
     name: 'Подъём ног в висе', img: 'Hanging_Leg_Raise', group: 'abs', type: 'bw', base: false, equip: 'body', step: 0,

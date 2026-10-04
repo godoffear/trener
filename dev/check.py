@@ -165,6 +165,17 @@ async def flow(b):
     await pg.click('[data-a="sheetclose"]')
     ok('сделано' in await pg.inner_text('#app') and 'сиденье на 4' in await pg.inner_text('#app'), 'день показывает сделанное и заметку')
     await pg.screenshot(path='/tmp/trener-wo-done.png', full_page=True)
+    await pg.click('[data-a="wdel"]'); await pg.wait_for_timeout(200)
+    ok('сделано' not in await pg.inner_text('#app'), 'удалить тренировку')
+    await pg.click('[data-a="start"]'); await pg.click('[data-a="wo-begin"]')
+    await pg.fill('#e-kg', '30'); await pg.fill('#e-reps', '8'); await pg.click('[data-a="wo-log"]')
+    await pg.click('[data-a="wo-cancel"]'); await pg.wait_for_timeout(200)
+    n = await pg.evaluate("D.workouts.length + (D.active ? 1 : 0)")
+    ok(n == 0 and await pg.query_selector('[data-a="start"]'), 'отменить без записи — в истории пусто')
+    # переезд программы v2 → v3: скручивания в тренажёре → на скамье
+    await pg.evaluate("(async()=>{const p=defaultProgram();p.v=2;p.days.A.items[8].ex='crunch_m';p.days.A.items[8].step=5;await dbPut('kv',{id:'program',val:p})})()")
+    await pg.reload(); await pg.wait_for_timeout(500)
+    ok(await pg.evaluate("D.program.v===3 && !JSON.stringify(D.program).includes('crunch_m') && D.program.days.A.items[8].ex==='bench_crunch'"), 'старая программа: скручивания заменены')
     if errs: print('Ошибки JS:', errs)
     await ctx.close()
 

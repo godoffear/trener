@@ -113,7 +113,8 @@ function vWorkout() {
     <button class="btn main" style="margin-top:8px" data-a="wo-log">Записать подход</button></div>
     <div class="wo-tools"><button class="btn ghost" data-a="wo-swap">Заменить</button><button class="btn ghost" data-a="wo-disc">Дискомфорт</button><button class="btn ghost" data-a="wo-note">Заметка${it.note ? ' ✓' : ''}</button></div>`;
   const last = w.cur === n - 1;
-  h += `<button class="btn ${done >= need ? 'main' : 'ghost'}" style="margin-top:8px" data-a="${last ? 'wo-finish' : 'wo-next'}">${last ? 'Завершить тренировку' : 'Следующее упражнение →'}</button></div>`;
+  h += `<button class="btn ${done >= need ? 'main' : 'ghost'}" style="margin-top:8px" data-a="${last ? 'wo-finish' : 'wo-next'}">${last ? 'Завершить тренировку' : 'Следующее упражнение →'}</button></div>
+    <button class="btn ghost danger" style="margin-top:4px" data-a="wo-cancel">Отменить без записи</button>`;
   if (w.restUntil > Date.now()) h += `<div class="rest" id="rest"><div><span class="muted small">Отдых</span><b class="num" id="rest-t">${mmss(w.restUntil - Date.now())}</b></div>
     <button class="btn" data-a="wo-rest-add">+30 с</button><button class="btn" data-a="wo-rest-skip">Хватит</button></div>`;
   return h;
@@ -307,6 +308,9 @@ document.addEventListener('click', async ev => {
     case 'wo-go': readEntry(); w.cur = +ds.i; saveActive(); render(); scrollTo(0, 0); break;
     case 'wo-next': readEntry(); w.cur = Math.min(w.items.length - 1, w.cur + 1); saveActive(); render(); scrollTo(0, 0); break;
     case 'wo-finish': readEntry(); finishWorkout(); break;
+    case 'wo-cancel':
+      if (!confirm('Отменить тренировку? Ничего не сохранится.')) return;
+      D.active = null; await saveActive(); clearInterval(restTimer); entry = null; tab = 'today'; render(); toast('Тренировка отменена'); break;
     case 'wo-warm': { const it = curItem(); it.warm = !it.warm; saveActive(); render(); break; }
     case 'wo-inc': case 'wo-dec': {
       readEntry(); const it = curItem(), d = a === 'wo-inc' ? 1 : -1;

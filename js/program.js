@@ -7,7 +7,7 @@ const REST_BASE = 90, REST_ISO = 60, REST_HOLD = 45;  // 0.5: Андрею 2 м�
 const it = (ex, sets, lo, hi, extra) => Object.assign({ ex, sets, lo, hi, rest: EX[ex].base ? REST_BASE : REST_ISO }, extra || {});
 
 // v2 (0.5): тренировки около часа без разминочных подходов.
-const PROGRAM_V = 2;
+const PROGRAM_V = 3;  // v3 (0.6): скручивания в тренажёре → скручивания лёжа на скамье
 function defaultProgram() {
   const hold = { rest: REST_HOLD };
   return {
@@ -16,7 +16,7 @@ function defaultProgram() {
       A: { name: 'Грудь, плечи, трицепс', items: [
         it('bench', 4, 6, 10), it('incl_db', 4, 8, 12), it('fly', 4, 12, 15), it('sh_press', 3, 8, 12),
         it('lat_raise', 4, 12, 15), it('face_pull', 3, 12, 15), it('pushdown', 3, 10, 15), it('rope_ovh', 3, 10, 15),
-        it('crunch_m', 3, 10, 15),
+        it('bench_crunch', 3, 12, 15),
       ] },
       B: { name: 'Спина, задняя дельта, бицепс', items: [
         it('gravitron', 4, 6, 10), it('row', 4, 8, 12), it('lat_pd', 3, 10, 12), it('db_row', 3, 10, 12),
@@ -31,7 +31,7 @@ function defaultProgram() {
       D: { name: 'Всё тело', items: [
         it('goblet', 3, 10, 12), it('chest_press', 3, 8, 12), it('gravitron', 3, 6, 10), it('row', 3, 8, 12),
         it('db_sh_press', 3, 8, 12), it('fly', 3, 12, 15), it('face_pull', 3, 12, 15), it('pushdown', 3, 12, 15),
-        it('curl', 3, 12, 15), it('crunch_m', 3, 10, 15), it('plank', 2, 45, 45, hold),
+        it('curl', 3, 12, 15), it('bench_crunch', 3, 12, 15), it('plank', 2, 45, 45, hold),
       ] },
     },
     week: { 1: 'A', 2: 'B', 3: 'walk', 4: 'C', 5: 'D', 6: 'walk', 0: 'rest' },

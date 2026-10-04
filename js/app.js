@@ -1,6 +1,6 @@
 // Тренер — экраны и навигация. Ванильный JS без зависимостей.
 // Отрисовка: функции v*() возвращают HTML-строку, клики ловит один обработчик по data-a.
-const APP_VERSION = '0.5.2';
+const APP_VERSION = '0.6';
 
 // ───── Даты ─────
 const pad = n => String(n).padStart(2, '0');
@@ -189,7 +189,7 @@ function vDone(w) {
     h += `<li class="tap" data-a="tech" data-ex="${it.ex}"><div class="n"><b>${esc(e.name)}</b><span>${sets.map(s => setText(e, s)).join(', ')}</span>
       ${it.note ? `<span class="wo-note">${esc(it.note)}</span>` : ''}</div>${recs.has(it.ex) ? '<div class="w acc">★</div>' : ''}</li>`;
   }
-  return h + `</ul><button class="btn" data-a="summary" data-id="${w.id}">Итог</button></div>`;
+  return h + `</ul><div class="row2"><button class="btn" data-a="summary" data-id="${w.id}">Итог</button><button class="btn ghost danger" data-a="wdel" data-id="${w.id}">Удалить</button></div></div>`;
 }
 
 // Путь к первому подтягиванию: помощь в гравитроне → негативы (помощь < 30% веса) → чистое подтягивание
@@ -375,6 +375,10 @@ document.addEventListener('click', async ev => {
     case 'resume': tab = 'workout'; render(); restLoop(); scrollTo(0, 0); break;
     case 'day': selDay = ds.k || null; render(); break;
     case 'wk': selDay = dk(addDays(selDay ? pk(selDay) : new Date(), +ds.v)); render(); break;
+    case 'wdel': {
+      if (!confirm('Удалить эту тренировку из истории? Вернуть будет нельзя.')) return;
+      D.workouts = D.workouts.filter(x => x.id !== ds.id); await dbDel('workouts', ds.id); render(); toast('Тренировка удалена'); break;
+    }
     case 'summary': { const w = D.workouts.find(x => x.id === ds.id); if (w) sheetSummary(w); break; }
     case 'update': location.reload(); break;
     case 'weigh': {

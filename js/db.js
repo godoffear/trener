@@ -45,7 +45,10 @@ async function dbLoad() {
   D.settings = Object.assign(defaultSettings(), get('settings'));
   D.program = get('program') || defaultProgram();
   // 0.5: программа v2 (около часа, отдых 90/60 с) — заменяем старую, дни недели оставляем
-  if ((D.program.v || 1) < PROGRAM_V) { const week = D.program.week; D.program = defaultProgram(); D.program.week = week; await dbPut('kv', { id: 'program', val: D.program }); }
+  if ((D.program.v || 1) < 2) { const week = D.program.week; D.program = defaultProgram(); D.program.week = week; }
+  // 0.6: v3 — скручивания в тренажёре заменить на скручивания на скамье, остальные правки Андрея не трогаем
+  if (D.program.v < 3) for (const d of Object.values(D.program.days)) for (const x of d.items) if (x.ex === 'crunch_m') { Object.assign(x, { ex: 'bench_crunch', lo: 12, hi: 15 }); delete x.step; }
+  if (D.program.v !== PROGRAM_V) { D.program.v = PROGRAM_V; await dbPut('kv', { id: 'program', val: D.program }); }
   D.active = get('active') || null;
   D.insights = get('insights') || { weekly: [], plateaus: [] };
   D.workouts = (await dbAll('workouts')).sort((a, b) => a.date < b.date ? -1 : 1);
