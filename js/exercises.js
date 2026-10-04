@@ -1,4 +1,5 @@
-// Справочник упражнений: техника текстом (фото Андрей убрал — 0.5).
+// Справочник упражнений. Фото — из открытой базы free-exercise-db (public domain),
+// лежат в img/ex/<img>/0.jpg (старт) и 1.jpg (финиш). На экране тренировки свёрнуты («Фото ▸»).
 // type: 'w' — вес × повторы, 'bw' — свой вес × повторы, 'time' — секунды, 'assist' — вес помощи (гравитрон).
 // base: true — базовое (отдых 2–3 мин, разминочный подход), иначе изоляция (60–90 с).
 // group — для недельного объёма: chest, back, shoulders, biceps, triceps, legs, abs.
@@ -6,7 +7,7 @@
 const EX = {
   // ───── Грудь ─────
   bench: {
-    name: 'Жим штанги лёжа', group: 'chest', type: 'w', base: true, equip: 'barbell', step: 2.5,
+    name: 'Жим штанги лёжа', img: 'Barbell_Bench_Press_-_Medium_Grip', group: 'chest', type: 'w', base: true, equip: 'barbell', step: 2.5,
     muscles: 'Грудь, передняя дельта, трицепс',
     tech: ['Лопатки сведены и прижаты к скамье, ноги упираются в пол', 'Хват чуть шире плеч, запястья прямые', 'Опускай гриф к низу груди, локти под углом ~45° к корпусу', 'Касание груди без отбива — и жми вверх и чуть к лицу'],
     cue: 'Лопатки в карманы — грудь колесом', tempo: '2 с вниз, без паузы, мощно вверх',
@@ -15,7 +16,7 @@ const EX = {
     subs: ['db_bench', 'chest_press'],
   },
   incl_db: {
-    name: 'Жим гантелей на наклонной скамье', group: 'chest', type: 'w', base: true, equip: 'dumbbell', step: 2,
+    name: 'Жим гантелей на наклонной скамье', img: 'Incline_Dumbbell_Press', group: 'chest', type: 'w', base: true, equip: 'dumbbell', step: 2,
     muscles: 'Верх груди, передняя дельта, трицепс',
     tech: ['Наклон скамьи 30°, не круче — иначе работают плечи', 'Лопатки сведены, гантели над плечами', 'Опускай до лёгкого растяжения груди, локти чуть ниже скамьи', 'Выжимай вверх по дуге, гантели не стукай'],
     cue: 'Грудь тянется к гантелям', tempo: '2 с вниз, 1 с вверх',
@@ -24,7 +25,7 @@ const EX = {
     subs: ['db_bench', 'chest_press'],
   },
   fly: {
-    name: 'Сведение рук в тренажёре (бабочка)', group: 'chest', type: 'w', base: false, equip: 'machine', step: 5,
+    name: 'Сведение рук в тренажёре (бабочка)', img: 'Butterfly', group: 'chest', type: 'w', base: false, equip: 'machine', step: 5,
     muscles: 'Грудь',
     tech: ['Сиденье так, чтобы ручки были на уровне середины груди', 'Спина прижата, лопатки сведены', 'Сводишь руки по дуге, локти чуть согнуты и не меняют угол', 'Пауза в сведении, медленно назад до растяжения'],
     cue: 'Обнять дерево', tempo: '1 с сведение, пауза 1 с, 2 с назад',
@@ -33,7 +34,7 @@ const EX = {
     subs: ['crossover', 'incl_fly'],
   },
   chest_press: {
-    name: 'Жим от груди в тренажёре', group: 'chest', type: 'w', base: true, equip: 'machine', step: 5,
+    name: 'Жим от груди в тренажёре', img: 'Leverage_Chest_Press', group: 'chest', type: 'w', base: true, equip: 'machine', step: 5,
     muscles: 'Грудь, передняя дельта, трицепс',
     tech: ['Ручки на уровне середины груди', 'Спина и лопатки прижаты к спинке', 'Жми до почти прямых рук, локти не замыкай', 'Возвращай медленно до растяжения груди'],
     cue: 'Отталкиваешь стену', tempo: '1 с жим, 2 с назад',
@@ -42,7 +43,7 @@ const EX = {
     subs: ['db_bench', 'bench'],
   },
   db_bench: {
-    name: 'Жим гантелей лёжа', group: 'chest', type: 'w', base: true, equip: 'dumbbell', step: 2,
+    name: 'Жим гантелей лёжа', img: 'Dumbbell_Bench_Press', group: 'chest', type: 'w', base: true, equip: 'dumbbell', step: 2,
     muscles: 'Грудь, передняя дельта, трицепс',
     tech: ['Ложись с гантелями на бёдрах, закинь их коленями', 'Лопатки сведены, ноги в пол', 'Опускай до растяжения груди, локти ~45°', 'Выжимай вверх, сводя гантели над грудью'],
     cue: 'Лопатки в скамью', tempo: '2 с вниз, 1 с вверх',
@@ -51,7 +52,7 @@ const EX = {
     subs: ['bench', 'chest_press'],
   },
   crossover: {
-    name: 'Сведение в кроссовере', group: 'chest', type: 'w', base: false, equip: 'cable', step: 5,
+    name: 'Сведение в кроссовере', img: 'Cable_Crossover', group: 'chest', type: 'w', base: false, equip: 'cable', step: 5,
     muscles: 'Грудь',
     tech: ['Блоки сверху, шаг вперёд, лёгкий наклон корпуса', 'Локти чуть согнуты и зафиксированы', 'Своди руки вниз-вперёд перед собой', 'Медленно назад до растяжения груди'],
     cue: 'Обнять бочку', tempo: '1 с сведение, пауза, 2 с назад',
@@ -60,7 +61,7 @@ const EX = {
     subs: ['fly', 'incl_fly'],
   },
   incl_fly: {
-    name: 'Разведение гантелей на наклонной', group: 'chest', type: 'w', base: false, equip: 'dumbbell', step: 1,
+    name: 'Разведение гантелей на наклонной', img: 'Incline_Dumbbell_Flyes', group: 'chest', type: 'w', base: false, equip: 'dumbbell', step: 1,
     muscles: 'Верх груди',
     tech: ['Скамья 30°, гантели над грудью, ладони друг к другу', 'Локти чуть согнуты и не меняют угол', 'Разводи до растяжения груди, не ниже плеч', 'Своди по той же дуге'],
     cue: 'Руки — крылья, работает грудь', tempo: '2 с вниз, 1 с вверх',
@@ -71,7 +72,7 @@ const EX = {
 
   // ───── Плечи ─────
   sh_press: {
-    name: 'Жим плеч в тренажёре', group: 'shoulders', type: 'w', base: true, equip: 'machine', step: 5,
+    name: 'Жим плеч в тренажёре', img: 'Machine_Shoulder_Military_Press', group: 'shoulders', type: 'w', base: true, equip: 'machine', step: 5,
     muscles: 'Передняя и средняя дельта, трицепс',
     tech: ['Сиденье так, чтобы ручки были на уровне плеч', 'Спина прижата, пресс напряжён', 'Жми вверх до почти прямых рук', 'Опускай до уровня подбородка'],
     cue: 'Голова между рук наверху', tempo: '1 с вверх, 2 с вниз',
@@ -80,7 +81,7 @@ const EX = {
     subs: ['db_sh_press'],
   },
   db_sh_press: {
-    name: 'Жим гантелей сидя', group: 'shoulders', type: 'w', base: true, equip: 'dumbbell', step: 2,
+    name: 'Жим гантелей сидя', img: 'Dumbbell_Shoulder_Press', group: 'shoulders', type: 'w', base: true, equip: 'dumbbell', step: 2,
     muscles: 'Передняя и средняя дельта, трицепс',
     tech: ['Сядь на скамью со спинкой почти вертикально', 'Гантели у плеч, локти чуть впереди корпуса', 'Выжимай вверх, гантели почти сходятся', 'Опускай до уровня ушей'],
     cue: 'Рёбра вниз, без прогиба', tempo: '1 с вверх, 2 с вниз',
@@ -89,7 +90,7 @@ const EX = {
     subs: ['sh_press'],
   },
   lat_raise: {
-    name: 'Разведение гантелей в стороны', group: 'shoulders', type: 'w', base: false, equip: 'dumbbell', step: 1,
+    name: 'Разведение гантелей в стороны', img: 'Side_Lateral_Raise', group: 'shoulders', type: 'w', base: false, equip: 'dumbbell', step: 1,
     muscles: 'Средняя дельта',
     tech: ['Стоя, лёгкий наклон вперёд, локти чуть согнуты', 'Поднимай через стороны до уровня плеч', 'Ведут локти, кисти не выше локтей', 'Опускай медленно, не бросай'],
     cue: 'Разводи руки в стороны, а не поднимай', tempo: '1 с вверх, 2–3 с вниз',
@@ -98,7 +99,7 @@ const EX = {
     subs: ['cable_lat_raise'],
   },
   cable_lat_raise: {
-    name: 'Разведение в сторону на нижнем блоке', group: 'shoulders', type: 'w', base: false, equip: 'cable', step: 2.5,
+    name: 'Разведение в сторону на нижнем блоке', img: 'Cable_Seated_Lateral_Raise', group: 'shoulders', type: 'w', base: false, equip: 'cable', step: 2.5,
     muscles: 'Средняя дельта',
     tech: ['Рукоять нижнего блока в дальней руке, трос перед телом', 'Локоть чуть согнут', 'Отводи руку в сторону до уровня плеча', 'Медленно возвращай'],
     cue: 'Локоть ведёт', tempo: '1 с вверх, 2 с вниз',
@@ -107,7 +108,7 @@ const EX = {
     subs: ['lat_raise'],
   },
   rear_fly: {
-    name: 'Обратные разведения в бабочке', group: 'shoulders', type: 'w', base: false, equip: 'machine', step: 5,
+    name: 'Обратные разведения в бабочке', img: 'Reverse_Machine_Flyes', group: 'shoulders', type: 'w', base: false, equip: 'machine', step: 5,
     muscles: 'Задняя дельта, середина спины',
     tech: ['Сядь лицом к спинке, ручки на уровне плеч', 'Руки почти прямые, грудь прижата', 'Разводи руки назад по дуге до линии корпуса', 'Медленно возвращай'],
     cue: 'Толкай ручки назад тыльной стороной ладоней', tempo: '1 с назад, пауза, 2 с вперёд',
@@ -116,7 +117,7 @@ const EX = {
     subs: ['rear_cable', 'face_pull'],
   },
   rear_cable: {
-    name: 'Разведения на заднюю дельту в кроссовере', group: 'shoulders', type: 'w', base: false, equip: 'cable', step: 2.5,
+    name: 'Разведения на заднюю дельту в кроссовере', img: 'Cable_Rear_Delt_Fly', group: 'shoulders', type: 'w', base: false, equip: 'cable', step: 2.5,
     muscles: 'Задняя дельта',
     tech: ['Блоки на уровне плеч, тросы крест-накрест', 'Руки почти прямые', 'Разводи руки в стороны до линии плеч', 'Медленно назад'],
     cue: 'Руки длинные', tempo: '1 с разведение, 2 с назад',
@@ -125,7 +126,7 @@ const EX = {
     subs: ['rear_fly', 'face_pull'],
   },
   face_pull: {
-    name: 'Тяга каната к лицу', group: 'shoulders', type: 'w', base: false, equip: 'cable', step: 2.5,
+    name: 'Тяга каната к лицу', img: 'Face_Pull', group: 'shoulders', type: 'w', base: false, equip: 'cable', step: 2.5,
     muscles: 'Задняя дельта, ротаторы плеча',
     tech: ['Канат на блоке на уровне лица', 'Тяни к переносице, разводя концы каната', 'Локти высоко, на уровне плеч', 'Медленно назад'],
     cue: 'Покажи бицепсы', tempo: '1 с тяга, пауза, 2 с назад',
@@ -136,7 +137,7 @@ const EX = {
 
   // ───── Трицепс и бицепс ─────
   pushdown: {
-    name: 'Разгибание рук на блоке', group: 'triceps', type: 'w', base: false, equip: 'cable', step: 5,
+    name: 'Разгибание рук на блоке', img: 'Triceps_Pushdown', group: 'triceps', type: 'w', base: false, equip: 'cable', step: 5,
     muscles: 'Трицепс',
     tech: ['Стоя у верхнего блока, локти прижаты к бокам', 'Разгибай руки до конца вниз', 'Локти не двигаются вперёд-назад', 'Медленно вверх до угла ~90°'],
     cue: 'Локти приклеены к рёбрам', tempo: '1 с вниз, пауза, 2 с вверх',
@@ -145,7 +146,7 @@ const EX = {
     subs: ['rope_ovh'],
   },
   rope_ovh: {
-    name: 'Разгибание из-за головы с канатом', group: 'triceps', type: 'w', base: false, equip: 'cable', step: 2.5,
+    name: 'Разгибание из-за головы с канатом', img: 'Cable_Rope_Overhead_Triceps_Extension', group: 'triceps', type: 'w', base: false, equip: 'cable', step: 2.5,
     muscles: 'Трицепс (длинная головка)',
     tech: ['Спиной к блоку, канат за головой, шаг вперёд', 'Локти смотрят вперёд и не расходятся', 'Разгибай руки вперёд-вверх', 'Медленно назад до растяжения'],
     cue: 'Двигаются только предплечья', tempo: '1 с разгибание, 2 с назад',
@@ -154,7 +155,7 @@ const EX = {
     subs: ['pushdown'],
   },
   curl: {
-    name: 'Сгибание рук на блоке', group: 'biceps', type: 'w', base: false, equip: 'cable', step: 5,
+    name: 'Сгибание рук на блоке', img: 'Standing_Biceps_Cable_Curl', group: 'biceps', type: 'w', base: false, equip: 'cable', step: 5,
     muscles: 'Бицепс',
     tech: ['Стоя у нижнего блока, прямая рукоять, хват снизу', 'Локти прижаты к бокам', 'Сгибай до верха, сожми бицепс', 'Медленно опускай до почти прямых рук'],
     cue: 'Локти на месте', tempo: '1 с вверх, пауза, 2 с вниз',
@@ -163,7 +164,7 @@ const EX = {
     subs: ['rope_hammer', 'hammer'],
   },
   rope_hammer: {
-    name: 'Молотки на блоке с канатом', group: 'biceps', type: 'w', base: false, equip: 'cable', step: 2.5,
+    name: 'Молотки на блоке с канатом', img: 'Cable_Hammer_Curls_-_Rope_Attachment', group: 'biceps', type: 'w', base: false, equip: 'cable', step: 2.5,
     muscles: 'Бицепс, плечевая мышца',
     tech: ['Канат на нижнем блоке, ладони друг к другу', 'Локти прижаты', 'Сгибай до плеч', 'Медленно вниз'],
     cue: 'Ладони смотрят друг на друга', tempo: '1 с вверх, 2 с вниз',
@@ -172,7 +173,7 @@ const EX = {
     subs: ['curl', 'hammer'],
   },
   hammer: {
-    name: 'Молотки с гантелями', group: 'biceps', type: 'w', base: false, equip: 'dumbbell', step: 1,
+    name: 'Молотки с гантелями', img: 'Hammer_Curls', group: 'biceps', type: 'w', base: false, equip: 'dumbbell', step: 1,
     muscles: 'Бицепс, плечевая мышца',
     tech: ['Стоя, гантели вдоль тела, ладони к бёдрам', 'Сгибай руки, не поворачивая кисть', 'Локти прижаты', 'Медленно опускай'],
     cue: 'Как будто держишь молоток', tempo: '1 с вверх, 2 с вниз',
@@ -183,8 +184,9 @@ const EX = {
 
   // ───── Спина ─────
   gravitron: {
-    name: 'Подтягивания в гравитроне', group: 'back', type: 'assist', base: true, equip: 'machine', step: 5,
+    name: 'Подтягивания в гравитроне', img: 'Band_Assisted_Pull-Up', group: 'back', type: 'assist', base: true, equip: 'machine', step: 5,
     muscles: 'Широчайшие, бицепс, середина спины',
+    photo: 'На фото — подтягивания с резинкой: движение то же, помогает противовес',
     tech: ['Встань коленями на платформу, хват чуть шире плеч', 'Начни с опускания плеч вниз — от ушей', 'Тяни локти вниз к бокам, грудь к перекладине', 'Опускайся медленно до прямых рук'],
     cue: 'Локти в задние карманы', tempo: '1 с вверх, 2–3 с вниз',
     breath: 'Выдох на подъёме, вдох вниз',
@@ -192,8 +194,9 @@ const EX = {
     subs: ['lat_pd', 'vbar_pd'],
   },
   hang: {
-    name: 'Вис на турнике', group: 'back', type: 'time', base: false, equip: 'body', step: 0,
+    name: 'Вис на турнике', img: 'Pullups', group: 'back', type: 'time', base: false, equip: 'body', step: 0,
     muscles: 'Хват, широчайшие, плечи',
+    photo: 'Нужно только нижнее положение — первое фото',
     tech: ['Хват сверху чуть шире плеч', 'Повисни на прямых руках, ноги не касаются пола', 'Плечи слегка опусти от ушей — активный вис', 'Держи до уверенного усилия, не до срыва'],
     cue: 'Плечи прочь от ушей', tempo: 'Статика',
     breath: 'Ровно, не задерживай дыхание',
@@ -201,8 +204,9 @@ const EX = {
     subs: ['neg'],
   },
   neg: {
-    name: 'Негативные подтягивания', group: 'back', type: 'bw', base: false, equip: 'body', step: 0,
+    name: 'Негативные подтягивания', img: 'Pullups', group: 'back', type: 'bw', base: false, equip: 'body', step: 0,
     muscles: 'Широчайшие, бицепс',
+    photo: 'Стартуешь с верхнего положения (второе фото) и медленно опускаешься',
     tech: ['Встань на скамью, подбородок над перекладиной', 'Убери опору и держи верхнюю точку', 'Опускайся медленно 4–5 секунд до прямых рук', 'Встань на скамью и повтори'],
     cue: 'Тормози всю дорогу вниз', tempo: '4–5 с вниз',
     breath: 'Выдох медленно во время опускания',
@@ -210,7 +214,7 @@ const EX = {
     subs: ['hang'],
   },
   row: {
-    name: 'Тяга нижнего блока сидя', group: 'back', type: 'w', base: true, equip: 'cable', step: 5,
+    name: 'Тяга нижнего блока сидя', img: 'Seated_Cable_Rows', group: 'back', type: 'w', base: true, equip: 'cable', step: 5,
     muscles: 'Середина спины, широчайшие, бицепс',
     tech: ['Сидя, ноги на упорах, колени чуть согнуты, спина прямая', 'Тяни рукоять к низу живота', 'Своди лопатки в конце, грудь вперёд', 'Отпускай руки вперёд до растяжения спины, корпус не качай'],
     cue: 'Тяни локтями, а не кистями', tempo: '1 с тяга, пауза, 2 с назад',
@@ -219,7 +223,7 @@ const EX = {
     subs: ['db_row'],
   },
   db_row: {
-    name: 'Тяга гантели одной рукой', group: 'back', type: 'w', base: true, equip: 'dumbbell', step: 2,
+    name: 'Тяга гантели одной рукой', img: 'One-Arm_Dumbbell_Row', group: 'back', type: 'w', base: true, equip: 'dumbbell', step: 2,
     muscles: 'Середина спины, широчайшие',
     tech: ['Колено и ладонь на скамье, спина ровная', 'Тяни гантель к поясу', 'Локоть вдоль корпуса', 'Опускай до растяжения'],
     cue: 'Локоть в потолок', tempo: '1 с тяга, 2 с вниз',
@@ -228,7 +232,7 @@ const EX = {
     subs: ['row'],
   },
   lat_pd: {
-    name: 'Тяга верхнего блока к груди', group: 'back', type: 'w', base: false, equip: 'cable', step: 5,
+    name: 'Тяга верхнего блока к груди', img: 'Wide-Grip_Lat_Pulldown', group: 'back', type: 'w', base: false, equip: 'cable', step: 5,
     muscles: 'Широчайшие, бицепс',
     tech: ['Хват чуть шире плеч, бёдра под валиками', 'Лёгкий отклон назад, грудь вверх', 'Тяни гриф к верху груди, локти вниз', 'Медленно вверх до прямых рук'],
     cue: 'Грудь навстречу грифу', tempo: '1 с вниз, 2 с вверх',
@@ -237,7 +241,7 @@ const EX = {
     subs: ['vbar_pd', 'cg_pd'],
   },
   vbar_pd: {
-    name: 'Тяга верхнего блока узкой рукоятью', group: 'back', type: 'w', base: false, equip: 'cable', step: 5,
+    name: 'Тяга верхнего блока узкой рукоятью', img: 'V-Bar_Pulldown', group: 'back', type: 'w', base: false, equip: 'cable', step: 5,
     muscles: 'Широчайшие, бицепс',
     tech: ['V-рукоять, ладони друг к другу', 'Грудь вверх, лёгкий отклон', 'Тяни к верху груди', 'Медленно вверх'],
     cue: 'Локти к бокам', tempo: '1 с вниз, 2 с вверх',
@@ -246,7 +250,7 @@ const EX = {
     subs: ['lat_pd'],
   },
   cg_pd: {
-    name: 'Тяга верхнего блока узким хватом', group: 'back', type: 'w', base: false, equip: 'cable', step: 5,
+    name: 'Тяга верхнего блока узким хватом', img: 'Close-Grip_Front_Lat_Pulldown', group: 'back', type: 'w', base: false, equip: 'cable', step: 5,
     muscles: 'Широчайшие, бицепс',
     tech: ['Хват на ширине плеч', 'Грудь вверх', 'Тяни гриф к груди', 'Медленно вверх'],
     cue: 'Грудь к грифу', tempo: '1 с вниз, 2 с вверх',
@@ -255,7 +259,7 @@ const EX = {
     subs: ['lat_pd'],
   },
   hyper: {
-    name: 'Гиперэкстензия', group: 'back', type: 'w', base: false, equip: 'machine', step: 2.5,
+    name: 'Гиперэкстензия', img: 'Hyperextensions_Back_Extensions', group: 'back', type: 'w', base: false, equip: 'machine', step: 2.5,
     muscles: 'Разгибатели спины',
     tech: ['Валик под тазовыми косточками, руки скрещены на груди', 'Опускайся, округляя спину позвонок за позвонком', 'Поднимайся до прямой линии тела, не выше', 'Вес — блин у груди, 0 кг = свой вес'],
     cue: 'Скручивай и раскручивай спину', tempo: '2 с вниз, 1 с вверх',
@@ -264,7 +268,7 @@ const EX = {
     subs: ['sldl'],
   },
   sldl: {
-    name: 'Тяга гантелей на прямых ногах', group: 'back', type: 'w', base: false, equip: 'dumbbell', step: 2,
+    name: 'Тяга гантелей на прямых ногах', img: 'Stiff-Legged_Dumbbell_Deadlift', group: 'back', type: 'w', base: false, equip: 'dumbbell', step: 2,
     muscles: 'Задняя поверхность бедра, разгибатели спины',
     tech: ['Стоя, гантели перед бёдрами, колени чуть согнуты', 'Наклоняйся с прямой спиной, гантели скользят по ногам', 'До растяжения задней поверхности бедра', 'Возвращайся, разгибая корпус'],
     cue: 'Спина ровная, как доска', tempo: '2 с вниз, 1 с вверх',
@@ -275,7 +279,7 @@ const EX = {
 
   // ───── Ноги ─────
   leg_press: {
-    name: 'Жим ногами', group: 'legs', type: 'w', base: true, equip: 'machine', step: 10,
+    name: 'Жим ногами', img: 'Leg_Press', group: 'legs', type: 'w', base: true, equip: 'machine', step: 10,
     muscles: 'Квадрицепсы, задняя поверхность бедра',
     tech: ['Стопы на середине платформы на ширине плеч', 'Поясница прижата к спинке всё время', 'Опускай платформу до угла в коленях ~90°', 'Выжимай, не выпрямляя колени в замок'],
     cue: 'Поясница приклеена', tempo: '2 с вниз, 1 с вверх',
@@ -284,7 +288,7 @@ const EX = {
     subs: ['goblet', 'db_squat'],
   },
   leg_ext: {
-    name: 'Разгибание ног сидя', group: 'legs', type: 'w', base: false, equip: 'machine', step: 5,
+    name: 'Разгибание ног сидя', img: 'Leg_Extensions', group: 'legs', type: 'w', base: false, equip: 'machine', step: 5,
     muscles: 'Квадрицепсы',
     tech: ['Ось тренажёра напротив колена, валик над стопой', 'Держись за ручки, таз прижат', 'Разгибай ноги до конца, сожми бедро', 'Медленно опускай'],
     cue: 'Пауза наверху', tempo: '1 с вверх, пауза 1 с, 2 с вниз',
@@ -293,7 +297,7 @@ const EX = {
     subs: ['goblet'],
   },
   leg_curl: {
-    name: 'Сгибание ног лёжа', group: 'legs', type: 'w', base: false, equip: 'machine', step: 5,
+    name: 'Сгибание ног лёжа', img: 'Lying_Leg_Curls', group: 'legs', type: 'w', base: false, equip: 'machine', step: 5,
     muscles: 'Задняя поверхность бедра',
     tech: ['Лёжа, колени чуть за краем скамьи, валик над пятками', 'Таз прижат к скамье', 'Сгибай ноги до упора', 'Медленно опускай до почти прямых ног'],
     cue: 'Пятки к спине', tempo: '1 с вверх, 2–3 с вниз',
@@ -302,7 +306,7 @@ const EX = {
     subs: ['sldl'],
   },
   calf: {
-    name: 'Подъём на носки в тренажёре', group: 'legs', type: 'w', base: false, equip: 'machine', step: 5,
+    name: 'Подъём на носки в тренажёре', img: 'Standing_Calf_Raises', group: 'legs', type: 'w', base: false, equip: 'machine', step: 5,
     muscles: 'Икры',
     tech: ['Носки на краю платформы, колени почти прямые', 'Опусти пятки до растяжения', 'Поднимись на носки максимально высоко', 'Пауза наверху и внизу'],
     cue: 'Внизу растяжение, вверху пауза', tempo: '1 с вверх, пауза 1 с, 2 с вниз',
@@ -311,7 +315,7 @@ const EX = {
     subs: ['calf_lp'],
   },
   calf_lp: {
-    name: 'Икры в тренажёре для жима ногами', group: 'legs', type: 'w', base: false, equip: 'machine', step: 10,
+    name: 'Икры в тренажёре для жима ногами', img: 'Calf_Press_On_The_Leg_Press_Machine', group: 'legs', type: 'w', base: false, equip: 'machine', step: 10,
     muscles: 'Икры',
     tech: ['Носки на нижнем краю платформы', 'Колени прямые, но не в замке', 'Толкай платформу носками', 'Медленно до растяжения'],
     cue: 'Работают только стопы', tempo: '1 с, пауза, 2 с',
@@ -320,8 +324,9 @@ const EX = {
     subs: ['calf'],
   },
   goblet: {
-    name: 'Приседания с гантелью (гоблет)', group: 'legs', type: 'w', base: true, equip: 'dumbbell', step: 2,
+    name: 'Приседания с гантелью (гоблет)', img: 'Goblet_Squat', group: 'legs', type: 'w', base: true, equip: 'dumbbell', step: 2,
     muscles: 'Квадрицепсы, корпус',
+    photo: 'На фото гиря — с гантелью техника та же',
     tech: ['Держи гантель вертикально у груди', 'Стопы чуть шире плеч, носки слегка наружу', 'Садись вниз между коленями, спина прямая', 'Вставай, толкаясь всей стопой'],
     cue: 'Грудь вверх, локти между колен', tempo: '2 с вниз, 1 с вверх',
     breath: 'Вдох вниз, выдох вверх',
@@ -329,7 +334,7 @@ const EX = {
     subs: ['db_squat', 'leg_press'],
   },
   db_squat: {
-    name: 'Приседания с гантелями', group: 'legs', type: 'w', base: true, equip: 'dumbbell', step: 2,
+    name: 'Приседания с гантелями', img: 'Dumbbell_Squat', group: 'legs', type: 'w', base: true, equip: 'dumbbell', step: 2,
     muscles: 'Квадрицепсы',
     tech: ['Гантели вдоль тела', 'Стопы на ширине плеч', 'Садись до параллели бёдер с полом', 'Вставай, не наклоняясь вперёд'],
     cue: 'Спина прямая', tempo: '2 с вниз, 1 с вверх',
@@ -340,7 +345,7 @@ const EX = {
 
   // ───── Пресс ─────
   crunch_m: {
-    name: 'Скручивания в тренажёре', group: 'abs', type: 'w', base: false, equip: 'machine', step: 5,
+    name: 'Скручивания в тренажёре', img: 'Ab_Crunch_Machine', group: 'abs', type: 'w', base: false, equip: 'machine', step: 5,
     muscles: 'Прямая мышца живота',
     tech: ['Сядь, зацепи ноги, возьмись за ручки', 'Скручивайся, приближая рёбра к тазу', 'Не тяни руками — работает живот', 'Медленно назад до растяжения'],
     cue: 'Рёбра к тазу', tempo: '1 с вниз, пауза, 2 с назад',
@@ -349,7 +354,7 @@ const EX = {
     subs: ['cable_crunch', 'rev_crunch'],
   },
   cable_crunch: {
-    name: 'Скручивания на блоке стоя на коленях', group: 'abs', type: 'w', base: false, equip: 'cable', step: 5,
+    name: 'Скручивания на блоке стоя на коленях', img: 'Cable_Crunch', group: 'abs', type: 'w', base: false, equip: 'cable', step: 5,
     muscles: 'Прямая мышца живота',
     tech: ['Стоя на коленях у верхнего блока, канат у головы', 'Таз неподвижен', 'Скручивайся вниз, локти к бёдрам', 'Медленно вверх'],
     cue: 'Скрутись в комок', tempo: '1 с вниз, 2 с вверх',
@@ -358,7 +363,7 @@ const EX = {
     subs: ['crunch_m'],
   },
   hlr: {
-    name: 'Подъём ног в висе', group: 'abs', type: 'bw', base: false, equip: 'body', step: 0,
+    name: 'Подъём ног в висе', img: 'Hanging_Leg_Raise', group: 'abs', type: 'bw', base: false, equip: 'body', step: 0,
     muscles: 'Пресс, сгибатели бедра',
     tech: ['Вис на турнике, плечи активны', 'Поднимай ноги (можно согнутые) до уровня таза и выше', 'Подкручивай таз вверх в конце', 'Опускай медленно, без раскачки'],
     cue: 'Таз к рёбрам', tempo: '1 с вверх, 2 с вниз',
@@ -367,7 +372,7 @@ const EX = {
     subs: ['bench_lr', 'rev_crunch'],
   },
   bench_lr: {
-    name: 'Подъём ног лёжа на скамье', group: 'abs', type: 'bw', base: false, equip: 'body', step: 0,
+    name: 'Подъём ног лёжа на скамье', img: 'Flat_Bench_Lying_Leg_Raise', group: 'abs', type: 'bw', base: false, equip: 'body', step: 0,
     muscles: 'Пресс',
     tech: ['Лёжа на скамье, держись за край над головой', 'Поясница прижата', 'Поднимай прямые ноги вертикально', 'Медленно опускай, не касаясь пола'],
     cue: 'Поясница прижата', tempo: '1 с вверх, 2 с вниз',
@@ -376,7 +381,7 @@ const EX = {
     subs: ['rev_crunch'],
   },
   rev_crunch: {
-    name: 'Обратные скручивания', group: 'abs', type: 'bw', base: false, equip: 'body', step: 0,
+    name: 'Обратные скручивания', img: 'Reverse_Crunch', group: 'abs', type: 'bw', base: false, equip: 'body', step: 0,
     muscles: 'Пресс (низ)',
     tech: ['Лёжа на спине, колени согнуты над тазом', 'Подкручивай таз, отрывая его от пола', 'Колени к груди', 'Медленно опускай таз'],
     cue: 'Таз отрывается сам', tempo: '1 с вверх, 2 с вниз',
@@ -385,7 +390,7 @@ const EX = {
     subs: ['cable_rev_crunch', 'bench_lr'],
   },
   cable_rev_crunch: {
-    name: 'Обратные скручивания на блоке', group: 'abs', type: 'w', base: false, equip: 'cable', step: 2.5,
+    name: 'Обратные скручивания на блоке', img: 'Cable_Reverse_Crunch', group: 'abs', type: 'w', base: false, equip: 'cable', step: 2.5,
     muscles: 'Пресс (низ)',
     tech: ['Лёжа ногами к нижнему блоку, ремни на стопах', 'Колени согнуты', 'Подкручивай таз, колени к груди', 'Медленно назад'],
     cue: 'Работает живот, не ноги', tempo: '1 с, 2 с',
@@ -394,7 +399,7 @@ const EX = {
     subs: ['rev_crunch'],
   },
   side_plank: {
-    name: 'Боковая планка', group: 'abs', type: 'time', base: false, equip: 'body', step: 0,
+    name: 'Боковая планка', img: 'Side_Bridge', group: 'abs', type: 'time', base: false, equip: 'body', step: 0,
     muscles: 'Косые мышцы живота',
     tech: ['Опора на предплечье, локоть под плечом', 'Тело — прямая линия от головы до стоп', 'Таз не проседает', 'Каждый подход — обе стороны'],
     cue: 'Таз вверх', tempo: 'Статика, время на каждую сторону',
@@ -403,7 +408,7 @@ const EX = {
     subs: ['plank'],
   },
   plank: {
-    name: 'Планка', group: 'abs', type: 'time', base: false, equip: 'body', step: 0,
+    name: 'Планка', img: 'Plank', group: 'abs', type: 'time', base: false, equip: 'body', step: 0,
     muscles: 'Пресс, корпус',
     tech: ['Опора на предплечья и носки', 'Тело — прямая линия', 'Напряги пресс', 'Не задирай и не опускай таз'],
     cue: 'Пупок к позвоночнику', tempo: 'Статика',

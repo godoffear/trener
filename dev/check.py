@@ -44,7 +44,8 @@ async def main():
         print('Без интернета открывается:', 'OK' if ok else 'НЕТ')
         await pg.fill('#s-weight', '82,5'); await pg.click('[data-a="welcome"]')
         await pg.click('[data-a="tab"][data-k="prog"]'); await pg.click('.exl [data-a="tech"]'); await pg.wait_for_timeout(400)
-        print('Техника без интернета, без фото:', 'OK' if await pg.query_selector('.cue') and not await pg.query_selector('.sheet img') else 'НЕТ')
+        ph = await pg.evaluate("[...document.querySelectorAll('.sheet .pics img')].length===2 && [...document.querySelectorAll('.sheet .pics img')].every(i=>i.naturalWidth>0)")
+        print('Фото в технике без интернета:', 'OK' if ph else 'НЕТ')
         await ctx.close()
 
         for w, h, tag in [(360, 780, 'p'), (780, 360, 'l')]:
@@ -121,6 +122,7 @@ async def flow(b):
     ok(await pg.query_selector('[data-a="wo-begin"][data-light="1"]'), 'плохое самочувствие — предлагает облегчённо')
     await pg.click('[data-a="wo-begin"][data-light="1"]'); await pg.wait_for_timeout(200)
     ok('1 / 10' in await pg.inner_text('.wo-title') and 'облегчённо' in await pg.inner_text('.wo-title'), 'экран тренировки, облегчённый режим')
+    ok(await pg.query_selector('details.photos:not([open])'), 'фото на экране тренировки свёрнуты')
     await pg.screenshot(path='/tmp/trener-wo-1.png', full_page=True)
     # гравитрон: 3 подхода (4−1)
     await pg.fill('#e-kg', '35'); await pg.fill('#e-reps', '8'); await pg.click('[data-a="wo-rir"][data-v="2"]'); await pg.click('[data-a="wo-log"]')

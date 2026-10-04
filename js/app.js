@@ -1,6 +1,6 @@
 // Тренер — экраны и навигация. Ванильный JS без зависимостей.
 // Отрисовка: функции v*() возвращают HTML-строку, клики ловит один обработчик по data-a.
-const APP_VERSION = '0.5';
+const APP_VERSION = '0.5.1';
 
 // ───── Даты ─────
 const pad = n => String(n).padStart(2, '0');
@@ -280,10 +280,13 @@ function sheetAdd(dayId) {
 
 // ───── Техника упражнения ─────
 function sheetTech(id) {
-  const e = EX[id];
+  const e = EX[id], src = n => `img/ex/${e.img}/${n}.jpg`;
   const subs = e.subs.map(s => `<button class="chip" data-a="tech" data-ex="${s}">${esc(EX[s].name)}</button>`).join('');
   const fold = (t, body) => `<details class="fold"><summary>${t}</summary>${body}</details>`;
   openSheet(`<h2>${esc(e.name)}</h2>
+    <div class="pics"><figure><img src="${src(0)}" alt="Старт" loading="lazy"><figcaption>Старт</figcaption></figure>
+      <figure><img src="${src(1)}" alt="Финиш" loading="lazy"><figcaption>Финиш</figcaption></figure></div>
+    ${e.photo ? `<p class="note" style="margin:0 0 8px">${esc(e.photo)}</p>` : ''}
     <div class="cue"><b>${esc(e.cue)}</b><span class="muted small">Темп: ${esc(e.tempo)}</span></div>
     <p class="muted small" style="margin:0 0 6px">${esc(e.muscles)}</p>
     ${fold('Техника', `<ol class="tech">${e.tech.map(t => `<li>${esc(t)}</li>`).join('')}</ol>`)}

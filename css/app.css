@@ -213,3 +213,8 @@ body.in-workout #app{padding-bottom:calc(120px + var(--safe-b))}
 .wo-name{display:flex;align-items:baseline;justify-content:space-between;gap:10px;cursor:pointer}
 .wo-name h2{min-width:0}
 .wo-name span{flex:none}
+
+/* 0.5.1: фото на экране тренировки свёрнуты */
+details.photos{border-top:0;margin:4px 0 6px}
+details.photos>summary{min-height:40px;color:var(--muted);font-size:14px}
+details.photos .pics.small{margin-bottom:6px}
