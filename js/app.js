@@ -1,6 +1,6 @@
 // Тренер — экраны и навигация. Ванильный JS без зависимостей.
 // Отрисовка: функции v*() возвращают HTML-строку, клики ловит один обработчик по data-a.
-const APP_VERSION = '0.2';
+const APP_VERSION = '0.3';
 
 // ───── Даты ─────
 const pad = n => String(n).padStart(2, '0');
@@ -354,4 +354,6 @@ document.addEventListener('change', async ev => {
   catch (e) { $('#app').innerHTML = `<div class="card">Не открылась база данных: ${esc(e.message)}</div>`; return; }
   render();
   if (D.settings.weight == null) sheetWelcome();
+  // Офлайн и установка как приложение: service worker из корня (sw.js)
+  if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(() => {});
 })();

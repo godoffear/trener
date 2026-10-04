@@ -28,6 +28,26 @@ async def shot(pg, name, label):
 async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch()
+        # PWA: манифест без ошибок, service worker в кэше, приложение открывается без сети
+        ctx = await b.new_context(); pg = await ctx.new_page()
+        await pg.goto(BASE + '/')
+        await pg.evaluate("navigator.serviceWorker.ready")
+        await pg.wait_for_timeout(1500)
+        cdp = await ctx.new_cdp_session(pg)
+        man = await cdp.send('Page.getAppManifest')
+        errs = [e['message'] for e in man.get('errors', [])]
+        print('Манифест:', 'OK' if man.get('url') and not errs else f'ошибки {errs}')
+        n = await pg.evaluate("caches.keys().then(ks=>caches.open(ks.find(k=>k.startsWith('trener-')))).then(c=>c.keys()).then(r=>r.length)")
+        print('В кэше файлов:', n)
+        await ctx.set_offline(True); await pg.reload(); await pg.wait_for_timeout(500)
+        ok = await pg.evaluate("!!document.querySelector('#tabs button') && [...document.images].every(i=>!i.src||i.complete)")
+        print('Без интернета открывается:', 'OK' if ok else 'НЕТ')
+        await pg.fill('#s-weight', '82,5'); await pg.click('[data-a="welcome"]')
+        await pg.click('[data-a="tab"][data-k="prog"]'); await pg.click('.exl [data-a="tech"]'); await pg.wait_for_timeout(400)
+        ph = await pg.evaluate("[...document.querySelectorAll('.pics img')].every(i=>i.naturalWidth>0)")
+        print('Фото без интернета:', 'OK' if ph else 'НЕТ')
+        await ctx.close()
+
         for w, h, tag in [(360, 780, 'p'), (780, 360, 'l')]:
             ctx = await b.new_context(viewport={'width': w, 'height': h})
             pg = await ctx.new_page(); errs = []
