@@ -1,0 +1,140 @@
+@font-face{font-family:'Manrope';font-weight:400 800;font-display:swap;src:url(../fonts/Manrope.woff2) format('woff2')}
+@font-face{font-family:'Unbounded';font-weight:500 800;font-display:swap;src:url(../fonts/Unbounded.woff2) format('woff2')}
+:root{
+  --bg:#101214;--card:#1A1D21;--card2:#22262B;--line:#2C3137;
+  --text:#F2F4F5;--muted:#9AA3AD;--acc:#C6F135;--on-acc:#101214;
+  --warn:#FFB547;--bad:#FF6B6B;--walk:#6FC3FF;
+  --r:16px;--nav:64px;
+  --safe-b:env(safe-area-inset-bottom,0px);
+  color-scheme:dark;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text)}
+body{font:400 16px/1.45 'Manrope',system-ui,sans-serif;min-height:100vh;overflow-x:hidden}
+h1,h2,h3,.num{font-family:'Unbounded','Manrope',sans-serif;font-weight:700;letter-spacing:-.01em;margin:0}
+h1{font-size:22px;line-height:1.2}
+h2{font-size:17px;line-height:1.25}
+h3{font-size:14px;line-height:1.3}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+.acc{color:var(--acc)}
+
+#app{max-width:600px;margin:0 auto;padding:16px 16px calc(var(--nav) + var(--safe-b) + 24px)}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:4px 0 16px}
+.top .muted{font-size:14px}
+
+.card{background:var(--card);border-radius:var(--r);padding:16px;margin-bottom:12px}
+.card-h{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px}
+.card-h>div{min-width:0}
+.tag{display:inline-block;font-size:12px;font-weight:700;padding:3px 8px;border-radius:99px;background:var(--card2);color:var(--muted);white-space:nowrap}
+.tag.acc{background:var(--acc);color:var(--on-acc)}
+.tag.warn{background:rgba(255,181,71,.15);color:var(--warn)}
+
+/* Кнопки — не меньше 48 px, под большой палец */
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;min-height:52px;padding:12px 18px;border:0;border-radius:14px;
+  background:var(--card2);color:var(--text);font-weight:700;font-size:16px;width:100%;text-decoration:none}
+.btn.main{background:var(--acc);color:var(--on-acc);font-family:'Unbounded',sans-serif;font-size:15px;letter-spacing:.01em}
+.btn.ghost{background:transparent;border:1.5px solid var(--line)}
+.btn.danger{color:var(--bad)}
+.btn:active{transform:scale(.98)}
+.btn[disabled]{opacity:.45}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ibtn{min-width:48px;min-height:48px;border:0;border-radius:12px;background:var(--card2);display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:20px}
+
+/* Полоса недели: без плашек, только точки */
+.week{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:16px}
+.wd{border-radius:12px;padding:6px 0 8px;text-align:center;min-width:0}
+.wd b{display:block;font-size:12px;color:var(--muted);font-weight:600}
+.wd .num{display:block;font-size:15px;margin:2px 0 6px}
+.wd i{display:block;width:8px;height:8px;margin:0 auto;border-radius:50%}
+.wd i.train{border:1.5px solid var(--acc)}
+.wd i.done{background:var(--acc)}
+.wd i.walk{background:var(--walk);opacity:.7}
+.wd.today{background:var(--card)}
+.wd.today .num{color:var(--acc)}
+
+/* Список упражнений */
+.exl{list-style:none;margin:0 0 14px;padding:0}
+.exl>li{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--line);min-height:56px}
+.exl>li:first-child{border-top:0}
+.exl .n{flex:1;min-width:0}
+.exl .n b{display:block;font-weight:700;overflow-wrap:anywhere}
+.exl .n span{font-size:13px;color:var(--muted)}
+.exl .w{text-align:right;white-space:nowrap;font-family:'Unbounded',sans-serif;font-size:14px;font-weight:600}
+.exl .w.muted{font-family:'Manrope',sans-serif;color:var(--muted)}
+.exl .w.up{color:var(--on-acc);background:var(--acc);padding:4px 8px;border-radius:8px}
+.exl>li.tap{cursor:pointer}
+
+/* Нижнее меню */
+nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:20;background:rgba(16,18,20,.94);backdrop-filter:blur(10px);
+  border-top:1px solid var(--line);padding-bottom:var(--safe-b)}
+nav.tabs>div{max-width:600px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr)}
+nav.tabs button{border:0;background:none;min-height:var(--nav);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+  color:var(--muted);font-size:12px;font-weight:700}
+nav.tabs button svg{width:24px;height:24px}
+nav.tabs button.on{color:var(--acc)}
+
+/* Нижний лист (формы, техника) */
+.sheet-bg{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:30;display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--card);width:100%;max-width:600px;max-height:92vh;overflow:auto;border-radius:20px 20px 0 0;
+  padding:8px 16px calc(16px + var(--safe-b))}
+.sheet .grip{width:40px;height:4px;border-radius:9px;background:var(--line);margin:4px auto 12px}
+.sheet h2{margin-bottom:12px}
+.field{margin-bottom:14px}
+.field>label{display:block;font-size:13px;color:var(--muted);font-weight:600;margin-bottom:6px}
+.inp{width:100%;min-height:52px;border-radius:12px;border:1.5px solid var(--line);background:var(--bg);padding:10px 14px;font-size:18px;font-weight:600}
+.inp:focus{outline:none;border-color:var(--acc)}
+select.inp{font-size:16px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{min-height:44px;min-width:56px;padding:8px 14px;border-radius:12px;border:1.5px solid var(--line);background:none;font-weight:700}
+.chip.on{background:var(--acc);border-color:var(--acc);color:var(--on-acc)}
+.stepper{display:flex;align-items:center;gap:8px}
+.stepper .inp{text-align:center;flex:1;min-width:0}
+
+/* Техника упражнения */
+.pics{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.pics figure{margin:0;position:relative}
+.pics img{width:100%;aspect-ratio:3/2;object-fit:cover;border-radius:12px;background:#fff;display:block}
+.pics figcaption{position:absolute;left:6px;top:6px;font-size:11px;font-weight:700;background:rgba(16,18,20,.8);padding:2px 7px;border-radius:99px}
+.cue{background:var(--card2);border-left:3px solid var(--acc);border-radius:10px;padding:10px 12px;margin:10px 0}
+.cue b{display:block}
+ol.tech,ul.err{margin:6px 0 12px;padding-left:20px}
+ol.tech>li,ul.err>li{margin-bottom:6px}
+.sec{font-size:13px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin:14px 0 4px}
+
+/* Программа */
+.pday .meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+.sched{list-style:none;margin:0;padding:0}
+.sched>li{display:flex;align-items:center;gap:12px;padding:6px 0}
+.sched>li b{width:28px;flex:none}
+.sched select{flex:1;min-width:0}
+.ex-pick>li{cursor:pointer}
+
+.toast{position:fixed;left:16px;right:16px;bottom:calc(var(--nav) + var(--safe-b) + 12px);z-index:40;max-width:568px;margin:0 auto;
+  background:var(--text);color:var(--bg);font-weight:700;padding:14px 16px;border-radius:14px;text-align:center}
+.empty{text-align:center;padding:24px 8px}
+.empty .num{font-size:40px;color:var(--acc);margin-bottom:8px}
+.note{font-size:14px;color:var(--muted);margin:8px 0 0}
+.warnbox{background:rgba(255,181,71,.1);color:var(--warn);border-radius:12px;padding:10px 12px;font-size:14px;margin:10px 0}
+
+/* Горизонтально: две колонки на «Сегодня» */
+@media (orientation:landscape) and (min-width:700px){
+  #app{max-width:960px}
+  .cols{display:grid;grid-template-columns:3fr 2fr;gap:12px;align-items:start}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}.btn:active{transform:none}}
+
+/* Тише: подсказка, маленькая кнопка в шапке, свёрнутые разделы техники */
+.hint{margin:-4px 0 6px;font-size:14px;color:var(--muted)}
+.top .small-btn{width:auto;min-height:44px;padding:8px 16px;font-size:14px}
+.top .small-btn.on{background:var(--acc);color:var(--on-acc)}
+details.fold{border-top:1px solid var(--line)}
+details.fold>summary{list-style:none;min-height:48px;display:flex;align-items:center;justify-content:space-between;font-weight:700;cursor:pointer}
+details.fold>summary::-webkit-details-marker{display:none}
+details.fold>summary::after{content:'+';font-size:22px;color:var(--muted);font-weight:400}
+details.fold[open]>summary::after{content:'−'}
+details.fold>p{margin:0 0 12px}
+details.fold>.chips{margin-bottom:12px}
+.stepper .btn{flex:none}
