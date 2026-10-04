@@ -1,6 +1,6 @@
 // Тренер — экраны и навигация. Ванильный JS без зависимостей.
 // Отрисовка: функции v*() возвращают HTML-строку, клики ловит один обработчик по data-a.
-const APP_VERSION = '0.4';
+const APP_VERSION = '0.5';
 
 // ───── Даты ─────
 const pad = n => String(n).padStart(2, '0');
@@ -122,6 +122,7 @@ function vToday() {
   if (isTrain(p)) {
     const day = D.program.days[p], items = dayItems(p);
     h += `<div class="card"><div class="card-h"><h2>${esc(day.name)}</h2>${past ? '<span class="tag warn">пропущено</span>' : `<span class="tag">≈ ${dayMinutes({ items })} мин</span>`}</div>`;
+    if (!past) h += `<p class="quote">${esc(quoteFor(sel))}</p>`;
     const pick = items.filter(needsPick).length, weighted = items.filter(x => EX[x.ex].type === 'w' || EX[x.ex].type === 'assist').length;
     if (pick && !past) h += `<p class="hint">${pick === weighted ? 'Первая тренировка — веса подберёшь по ходу' : 'Где веса нет — подберёшь по ходу'}</p>`;
     h += '<ul class="exl">';
@@ -143,6 +144,37 @@ function vToday() {
 function nextTraining(from) {
   for (let i = 1; i <= 7; i++) { const d = addDays(from, i), p = planOf(d); if (isTrain(p)) return { d, day: D.program.days[p] }; }
   return null;
+}
+
+// Фраза дня: номер тренировочного дня от QUOTE_FROM → без повторов, пока не кончится список
+const QUOTE_FROM = new Date(2026, 9, 5);
+function quoteFor(d) {
+  let n = 0; const x = new Date(QUOTE_FROM);
+  if (d >= x) for (; dk(x) < dk(d); x.setDate(x.getDate() + 1)) { if (isTrain(planOf(x))) n++; }
+  else for (; dk(x) > dk(d); x.setDate(x.getDate() - 1)) { if (isTrain(planOf(x))) n--; }
+  return QUOTES[((n % QUOTES.length) + QUOTES.length) % QUOTES.length];
+}
+
+// ───── Взвешивание по понедельникам ─────
+// Вес пишется и в Рацион: тот же сайт godoffear.github.io → общий localStorage, ключ 'racion-v3', поле w: [{d, w}].
+const RACION_KEY = 'racion-v3';
+function racionData() { try { return JSON.parse(localStorage.getItem(RACION_KEY) || 'null'); } catch (e) { return null; } }
+const racionHasWeight = key => { const r = racionData(); return !!(r && Array.isArray(r.w) && r.w.some(x => x.d === key)); };
+function racionWriteWeight(key, v) {
+  const r = racionData(); if (!r) return false;
+  r.w = (Array.isArray(r.w) ? r.w : []).filter(x => x.d !== key);
+  r.w.push({ d: key, w: Math.round(v * 10) / 10 });
+  try { localStorage.setItem(RACION_KEY, JSON.stringify(r)); return true; } catch (e) { return false; }
+}
+function maybeWeigh() {
+  const now = new Date(), key = dk(now);
+  if (now.getDay() !== 1 || D.settings.weight == null || sheetOpen || tab === 'workout') return;
+  if (D.settings.weighSkip === key || D.settings.weighed === key || racionHasWeight(key) || doneOn(key)) return;
+  openSheet(`<h2>Понедельник — сначала взвесься</h2>
+    <p class="muted" style="margin:0 0 14px">Встань на весы до тренировки. Вес запишу в Рацион и сюда — для пути к подтягиванию.</p>
+    <div class="field"><input class="inp" id="wg" inputmode="decimal" placeholder="${fmt(D.settings.weight)} кг"></div>
+    <button class="btn main" data-a="weigh">Записать</button>
+    <button class="btn ghost" style="margin-top:8px" data-a="weighskip">Сегодня без весов</button>`);
 }
 
 // Сделанная тренировка: что и как, рекорды — звёздочкой
@@ -248,13 +280,10 @@ function sheetAdd(dayId) {
 
 // ───── Техника упражнения ─────
 function sheetTech(id) {
-  const e = EX[id], src = n => `img/ex/${e.img}/${n}.jpg`;
+  const e = EX[id];
   const subs = e.subs.map(s => `<button class="chip" data-a="tech" data-ex="${s}">${esc(EX[s].name)}</button>`).join('');
   const fold = (t, body) => `<details class="fold"><summary>${t}</summary>${body}</details>`;
   openSheet(`<h2>${esc(e.name)}</h2>
-    <div class="pics"><figure><img src="${src(0)}" alt="Старт" loading="lazy"><figcaption>Старт</figcaption></figure>
-      <figure><img src="${src(1)}" alt="Финиш" loading="lazy"><figcaption>Финиш</figcaption></figure></div>
-    ${e.photo ? `<p class="note" style="margin:0 0 8px">${esc(e.photo)}</p>` : ''}
     <div class="cue"><b>${esc(e.cue)}</b><span class="muted small">Темп: ${esc(e.tempo)}</span></div>
     <p class="muted small" style="margin:0 0 6px">${esc(e.muscles)}</p>
     ${fold('Техника', `<ol class="tech">${e.tech.map(t => `<li>${esc(t)}</li>`).join('')}</ol>`)}
@@ -345,6 +374,14 @@ document.addEventListener('click', async ev => {
     case 'wk': selDay = dk(addDays(selDay ? pk(selDay) : new Date(), +ds.v)); render(); break;
     case 'summary': { const w = D.workouts.find(x => x.id === ds.id); if (w) sheetSummary(w); break; }
     case 'update': location.reload(); break;
+    case 'weigh': {
+      const v = num($('#wg').value), key = dk(new Date());
+      if (!v || v < 35 || v > 250) { toast('Впиши вес в кг'); return; }
+      D.settings.weight = Math.round(v * 10) / 10; D.settings.weighed = key; await saveKV('settings');
+      const ok = racionWriteWeight(key, v);
+      closeSheet(); render(); toast(ok ? `${fmt(D.settings.weight)} кг — записал в Рацион` : 'Записал. Рацион на этом телефоне не нашёл'); break;
+    }
+    case 'weighskip': D.settings.weighSkip = dk(new Date()); await saveKV('settings'); closeSheet(); break;
     case 'edit': sheetEdit(ds.d, +ds.i); break;
     case 'ed-n': { const f = $('#f-' + ds.f); f.value = Math.max(1, Math.min(8, (num(f.value) || 0) + +ds.v)); break; }
     case 'ed-rest': edit.rest = +ds.v; document.querySelectorAll('[data-a="ed-rest"]').forEach(c => c.classList.toggle('on', c === el)); break;
@@ -422,11 +459,11 @@ document.addEventListener('change', async ev => {
   try { await dbLoad(); }
   catch (e) { $('#app').innerHTML = `<div class="card">Не открылась база данных: ${esc(e.message)}</div>`; return; }
   render();
-  if (D.settings.weight == null) sheetWelcome();
+  if (D.settings.weight == null) sheetWelcome(); else maybeWeigh();
   // Приложение могли оставить открытым с вечера: при возврате на экран и в полночь перерисовываем день
   let shown = dk(new Date());
   const refreshDay = () => { const k = dk(new Date()); if (k !== shown) { shown = k; if (!sheetOpen) render(); } };
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshDay(); });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) { refreshDay(); maybeWeigh(); } });
   setInterval(refreshDay, 60000);
   if (D.active) restLoop();
   // Свайп по полосе недели — соседняя неделя

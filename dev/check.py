@@ -44,8 +44,7 @@ async def main():
         print('Без интернета открывается:', 'OK' if ok else 'НЕТ')
         await pg.fill('#s-weight', '82,5'); await pg.click('[data-a="welcome"]')
         await pg.click('[data-a="tab"][data-k="prog"]'); await pg.click('.exl [data-a="tech"]'); await pg.wait_for_timeout(400)
-        ph = await pg.evaluate("[...document.querySelectorAll('.pics img')].every(i=>i.naturalWidth>0)")
-        print('Фото без интернета:', 'OK' if ph else 'НЕТ')
+        print('Техника без интернета, без фото:', 'OK' if await pg.query_selector('.cue') and not await pg.query_selector('.sheet img') else 'НЕТ')
         await ctx.close()
 
         for w, h, tag in [(360, 780, 'p'), (780, 360, 'l')]:
@@ -73,9 +72,33 @@ async def main():
             await pg.evaluate('history.back()'); await pg.wait_for_timeout(200)
             if errs: print('Ошибки JS:', errs)
             await ctx.close()
+        await weigh(b)
         await flow(b)
         await b.close()
     srv.shutdown()
+
+async def weigh(b):
+    """Понедельник: окно «сначала взвесься», вес уходит в Рацион (racion-v3.w)."""
+    ctx = await b.new_context(viewport={'width': 360, 'height': 780}); pg = await ctx.new_page(); errs = []
+    pg.on('pageerror', lambda e: errs.append(str(e)))
+    await pg.add_init_script("(()=>{const RD=Date,fix=new RD('2026-10-05T09:40').getTime(),t0=RD.now();class FD extends RD{constructor(...a){if(a.length)super(...a);else super(fix+RD.now()-t0)}static now(){return fix+RD.now()-t0}};window.Date=FD})();")
+    await pg.goto(BASE + '/'); await pg.wait_for_timeout(300)
+    await pg.evaluate("localStorage.setItem('racion-v3', JSON.stringify({v:3, w:[{d:'2026-09-28', w:83.1}], done:{}}))")
+    await pg.fill('#s-weight', '82,5'); await pg.click('[data-a="welcome"]'); await pg.wait_for_timeout(500)
+    await pg.reload(); await pg.wait_for_selector('#tabs button')
+    ok = lambda c, t: print(f'  {t}:', 'OK' if c else 'НЕТ')
+    try: await pg.wait_for_selector('[data-a="weigh"]', timeout=3000)
+    except Exception: pass
+    ok(await pg.query_selector('[data-a="weigh"]'), 'понедельник: окно взвешивания при открытии')
+    await pg.screenshot(path='/tmp/trener-weigh.png')
+    await pg.fill('#wg', '82,4'); await pg.click('[data-a="weigh"]'); await pg.wait_for_timeout(200)
+    r = await pg.evaluate("JSON.parse(localStorage.getItem('racion-v3'))")
+    ok(r['w'] == [{'d': '2026-09-28', 'w': 83.1}, {'d': '2026-10-05', 'w': 82.4}] and r['done'] == {}, 'вес записан в Рацион, остальное не тронуто')
+    await pg.reload(); await pg.wait_for_timeout(400)
+    ok(not await pg.query_selector('[data-a="weigh"]'), 'второй раз в этот день не спрашивает')
+    ok(await pg.query_selector('.quote'), 'фраза дня на «Сегодня»')
+    if errs: print('Ошибки JS:', errs)
+    await ctx.close()
 
 async def flow(b):
     """Тренировка целиком: дни недели, старт, подходы, отдых, замена, дискомфорт, итог, продолжение после перезапуска."""
@@ -97,7 +120,7 @@ async def flow(b):
     for k in ['sleep', 'energy', 'sore']: await pg.click(f'[data-a="ck"][data-k="{k}"][data-v="1"]')
     ok(await pg.query_selector('[data-a="wo-begin"][data-light="1"]'), 'плохое самочувствие — предлагает облегчённо')
     await pg.click('[data-a="wo-begin"][data-light="1"]'); await pg.wait_for_timeout(200)
-    ok('1 / 8' in await pg.inner_text('.wo-title') and 'облегчённо' in await pg.inner_text('.wo-title'), 'экран тренировки, облегчённый режим')
+    ok('1 / 10' in await pg.inner_text('.wo-title') and 'облегчённо' in await pg.inner_text('.wo-title'), 'экран тренировки, облегчённый режим')
     await pg.screenshot(path='/tmp/trener-wo-1.png', full_page=True)
     # гравитрон: 3 подхода (4−1)
     await pg.fill('#e-kg', '35'); await pg.fill('#e-reps', '8'); await pg.click('[data-a="wo-rir"][data-v="2"]'); await pg.click('[data-a="wo-log"]')
@@ -121,7 +144,7 @@ async def flow(b):
     # перезапуск посреди тренировки
     await pg.reload(); await pg.wait_for_timeout(500)
     ok(await pg.query_selector('[data-a="resume"]'), 'после перезапуска — «Продолжить тренировку»')
-    await pg.click('[data-a="resume"]'); ok('3 / 8' in await pg.inner_text('.wo-title'), 'продолжает с того же упражнения')
+    await pg.click('[data-a="resume"]'); ok('3 / 10' in await pg.inner_text('.wo-title'), 'продолжает с того же упражнения')
     for w_, h_ in [(780, 360), (360, 780)]:
         await pg.set_viewport_size({'width': w_, 'height': h_}); await pg.wait_for_timeout(100)
         wide = await pg.evaluate(WIDE); ok(not wide, f'{w_}×{h_} экран тренировки не вылезает {wide or ""}')

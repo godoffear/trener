@@ -31,6 +31,8 @@ function defaultSettings() {
     weight: null,          // вес тела, кг — спрашивается при первом запуске
     start: null,           // дата начала цикла (для разгрузки каждые deloadEvery недель)
     deloadEvery: 7,
+    weighSkip: '',         // понедельник (ГГГГ-ММ-ДД), когда взвешивание пропустили
+    weighed: '',           // понедельник, когда взвесился здесь
   };
 }
 
@@ -42,6 +44,8 @@ async function dbLoad() {
   const kv = await dbAll('kv'), get = id => (kv.find(x => x.id === id) || {}).val;
   D.settings = Object.assign(defaultSettings(), get('settings'));
   D.program = get('program') || defaultProgram();
+  // 0.5: программа v2 (около часа, отдых 90/60 с) — заменяем старую, дни недели оставляем
+  if ((D.program.v || 1) < PROGRAM_V) { const week = D.program.week; D.program = defaultProgram(); D.program.week = week; await dbPut('kv', { id: 'program', val: D.program }); }
   D.active = get('active') || null;
   D.insights = get('insights') || { weekly: [], plateaus: [] };
   D.workouts = (await dbAll('workouts')).sort((a, b) => a.date < b.date ? -1 : 1);

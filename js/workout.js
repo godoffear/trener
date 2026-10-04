@@ -73,7 +73,7 @@ function vWorkout() {
   const w = D.active; if (!w) { tab = 'today'; return vToday(); }
   const it = curItem(), e = EX[it.ex], n = w.items.length, day = D.program.days[w.day];
   ensureEntry();
-  const done = workSets(it).length, need = it.plan.sets, src = i => `img/ex/${e.img}/${i}.jpg`;
+  const done = workSets(it).length, need = it.plan.sets;
   const prev = lastSession(it.ex), rec = lastWork(it.ex, it.plan);
   let h = `<div class="wo-top"><button class="ibtn" data-a="wo-back" aria-label="Выйти на главную">‹</button>
     <div class="wo-title"><b class="num">${w.cur + 1} / ${n}</b><span>${esc(day ? day.name : '')}${w.light ? ' · облегчённо' : ''}</span></div>
@@ -81,8 +81,8 @@ function vWorkout() {
     <div class="wo-dots">${w.items.map((x, i) => `<button data-a="wo-go" data-i="${i}" class="${i === w.cur ? 'on' : ''}${workSets(x).length >= x.plan.sets ? ' done' : ''}" aria-label="Упражнение ${i + 1}">${i + 1}</button>`).join('')}</div>`;
 
   h += `<div class="card wo">
-    <div class="pics small" data-a="tech" data-ex="${it.ex}"><img src="${src(0)}" alt=""><img src="${src(1)}" alt=""></div>
-    <h2>${esc(e.name)}${it.orig ? ' <span class="tag">замена</span>' : ''}</h2>
+    ${w.cur === 0 ? `<p class="quote">${esc(quoteFor(new Date()))}</p>` : ''}
+    <div class="wo-name" data-a="tech" data-ex="${it.ex}"><h2>${esc(e.name)}${it.orig ? ' <span class="tag">замена</span>' : ''}</h2><span class="muted small">Техника ›</span></div>
     <div class="cue"><b>${esc(e.cue)}</b><span class="muted small">Темп: ${esc(e.tempo)}</span></div>
     <div class="wo-info"><div><span class="muted">Сегодня</span> ${repsLabel(Object.assign({ ex: it.ex }, it.plan))}${rec != null && (e.type === 'w' || e.type === 'assist') ? ` · ${e.type === 'assist' ? 'помощь ' : ''}${fmt(rec)} кг` : ''}${e.equip === 'dumbbell' ? ' · на гантель' : ''}</div>
       ${prev ? `<div><span class="muted">В прошлый раз</span> ${workSets(prev.it).map(s => setText(e, s)).join(', ')}</div>` : ''}
@@ -95,7 +95,7 @@ function vWorkout() {
   if (it.sets.length) h += `<div class="sets">${it.sets.map((s, i) => `<button class="setchip" data-a="wo-set" data-i="${i}"><b>${i + 1}</b>${setText(e, s)}</button>`).join('')}</div>`;
 
   // Ввод подхода
-  const kgLabel = e.type === 'assist' ? 'Помощь, кг' : e.equip === 'dumbbell' ? 'Кг на гантель' : 'Кг';
+  const kgLabel = e.type === 'assist' ? 'Помощь' : e.equip === 'dumbbell' ? 'Кг (1 гант.)' : 'Кг';
   const stepper = (f, label, val, mode) => `<div class="field line"><label>${label}</label><div class="stepper">
     <button class="ibtn" data-a="wo-dec" data-f="${f}">−</button><input class="inp num" id="e-${f}" inputmode="${mode}" value="${val != null ? fmt(val) : ''}">
     <button class="ibtn" data-a="wo-inc" data-f="${f}">+</button></div></div>`;
