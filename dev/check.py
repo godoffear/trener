@@ -131,7 +131,7 @@ async def flow(b):
     for k in ['sleep', 'energy', 'sore']: await pg.click(f'[data-a="ck"][data-k="{k}"][data-v="1"]')
     ok(await pg.query_selector('[data-a="wo-begin"][data-light="1"]'), 'плохое самочувствие — предлагает облегчённо')
     await pg.click('[data-a="wo-begin"][data-light="1"]'); await pg.wait_for_timeout(200)
-    ok('1 / 10' in await pg.inner_text('.wo-title') and 'облегчённо' in await pg.inner_text('.wo-title'), 'экран тренировки, облегчённый режим')
+    ok('1 / 7' in await pg.inner_text('.wo-title') and 'облегчённо' in await pg.inner_text('.wo-title'), 'экран тренировки, облегчённый режим')
     ok(await pg.query_selector('details.photos:not([open])'), 'фото на экране тренировки свёрнуты')
     await pg.screenshot(path='/tmp/trener-wo-1.png', full_page=True)
     # гравитрон: 3 подхода (4−1)
@@ -142,12 +142,12 @@ async def flow(b):
     ok((await pg.inner_text('.sets')).count('×') == 3 and '30' in await pg.inner_text('.sets'), 'три подхода, «−» снижает помощь на шаг')
     ok(await pg.query_selector('#auto-t'), 'после последнего подхода — «Следующее упражнение через 7 с»')
     await pg.click('[data-a="wo-stay"]'); await pg.wait_for_timeout(1500)
-    ok(not await pg.query_selector('#auto-t') and '1 / 10' in await pg.inner_text('.wo-title'), '«Остаться» отменяет переход')
+    ok(not await pg.query_selector('#auto-t') and '1 / 7' in await pg.inner_text('.wo-title'), '«Остаться» отменяет переход')
     await pg.click('[data-a="wo-log"]'); await pg.wait_for_timeout(8000)
-    ok(False, 'сверх плана не переходит') if '2 / 10' in await pg.inner_text('.wo-title') else ok(True, 'подход сверх плана — без автоперехода')
+    ok(False, 'сверх плана не переходит') if '2 / 7' in await pg.inner_text('.wo-title') else ok(True, 'подход сверх плана — без автоперехода')
     await pg.click('[data-a="wo-set"][data-i="3"]'); await pg.click('[data-a="wo-set-del"]'); await pg.click('[data-a="wo-set"][data-i="2"]'); await pg.click('[data-a="wo-set-del"]')
     await pg.click('[data-a="wo-log"]'); await pg.wait_for_timeout(7600)
-    ok('2 / 10' in await pg.inner_text('.wo-title') and await pg.query_selector('#rest'), 'через 7 с сам перешёл к следующему, отдых идёт')
+    ok('2 / 7' in await pg.inner_text('.wo-title') and await pg.query_selector('#rest'), 'через 7 с сам перешёл к следующему, отдых идёт')
     # тяга: разминка, замена, дискомфорт, заметка
     await pg.click('[data-a="wo-warm"]'); ok(await pg.query_selector('.warm.on'), 'разминочный подход отмечен')
     await pg.fill('#e-kg', '40'); await pg.fill('#e-reps', '10'); await pg.click('[data-a="wo-log"]')
@@ -168,9 +168,9 @@ async def flow(b):
     # перезапуск посреди тренировки
     await pg.reload(); await pg.wait_for_timeout(500)
     ok(await pg.query_selector('[data-a="resume"]'), 'после перезапуска — «Продолжить тренировку»')
-    await pg.click('[data-a="resume"]'); ok('3 / 10' in await pg.inner_text('.wo-title'), 'продолжает с того же упражнения')
+    await pg.click('[data-a="resume"]'); ok('3 / 7' in await pg.inner_text('.wo-title'), 'продолжает с того же упражнения')
     # таймер для виса (упражнение на время): до конца — пишется цель, «Стоп» — сколько прошло
-    await pg.click('[data-a="wo-go"][data-i="9"]'); await pg.wait_for_timeout(200)
+    await pg.click('[data-a="wo-go"][data-i="6"]'); await pg.wait_for_timeout(200)
     await pg.fill('#e-sec', '3'); await pg.click('[data-a="wo-hold"]'); await pg.wait_for_timeout(4500)
     ok('3 с' in await pg.inner_text('.sets'), 'таймер виса: дошёл до конца — записал 3 с')
     if await pg.query_selector('[data-a="wo-rest-skip"]'): await pg.click('[data-a="wo-rest-skip"]')
@@ -198,10 +198,10 @@ async def flow(b):
     await pg.click('[data-a="wo-cancel"]'); await pg.wait_for_timeout(200)
     n = await pg.evaluate("D.workouts.length + (D.active ? 1 : 0)")
     ok(n == 0 and await pg.query_selector('[data-a="start"]'), 'отменить без записи — в истории пусто')
-    # переезд программы v2 → v3: скручивания в тренажёре → на скамье
-    await pg.evaluate("(async()=>{const p=defaultProgram();p.v=2;p.days.A.items[8].ex='crunch_m';p.days.A.items[8].step=5;await dbPut('kv',{id:'program',val:p})})()")
+    # переезд старой программы → v4 (≈ час), дни недели сохраняются
+    await pg.evaluate("(async()=>{const p=defaultProgram();p.v=3;p.week[3]='A';p.days.A.items.push({ex:'crunch_m',sets:3,lo:10,hi:15,rest:60});await dbPut('kv',{id:'program',val:p})})()")
     await pg.reload(); await pg.wait_for_timeout(500)
-    ok(await pg.evaluate("D.program.v===3 && !JSON.stringify(D.program).includes('crunch_m') && D.program.days.A.items[8].ex==='bench_crunch'"), 'старая программа: скручивания заменены')
+    ok(await pg.evaluate("D.program.v===4 && !JSON.stringify(D.program).includes('crunch_m') && D.program.week[3]==='A' && Object.values(D.program.days).every(d=>dayMinutes(d)<=62)"), 'старая программа → новая (≈ час), дни недели сохранены')
     if errs: print('Ошибки JS:', errs)
     await ctx.close()
 
