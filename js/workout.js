@@ -112,6 +112,8 @@ function vWorkout() {
     <textarea class="inp note-inp" id="n-text" rows="2" maxlength="300" placeholder="Комментарий: сиденье на 4, хват уже… Покажется в следующий раз">${esc(it.note || '')}</textarea>
     <div class="wo-tools"><button class="btn ghost" data-a="wo-swap">Заменить</button><button class="btn ghost" data-a="wo-disc">Дискомфорт</button></div>`;
   const last = w.cur === n - 1;
+  if (autoNext && autoNext.from === w.cur)
+    h += `<div class="auto-next"><span>Следующее упражнение через <b id="auto-t">${Math.ceil((autoNext.until - Date.now()) / 1000)}</b> с</span><button class="btn" data-a="wo-stay">Остаться</button></div>`;
   h += `<button class="btn ${done >= need ? 'main' : 'ghost'}" style="margin-top:8px" data-a="${last ? 'wo-finish' : 'wo-next'}">${last ? 'Завершить тренировку' : 'Следующее упражнение →'}</button></div>
     <button class="btn ghost danger" style="margin-top:4px" data-a="wo-cancel">Отменить без записи</button>`;
   if (w.restUntil > Date.now()) h += `<div class="rest" id="rest"><div><span class="muted small">Отдых</span><b class="num" id="rest-t">${mmss(w.restUntil - Date.now())}</b></div>
@@ -122,20 +124,33 @@ const plural = (n, one, few, many) => { const a = n % 10, b = n % 100; return a 
 const mmss = ms => { const s = Math.max(0, Math.ceil(ms / 1000)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
 
 // ───── Таймер отдыха ─────
+// Один таймер раз в секунду: отдых и автопереход к следующему упражнению.
+// Когда приложение свёрнуто — таймер не крутится (меньше нагрев), при возврате запускается снова.
+let autoNext = null;  // { until, from } — переход через 7 с после последнего подхода
+const AUTO_NEXT_MS = 7000;
 function restLoop() {
   clearInterval(restTimer);
-  if (!D.active || !D.active.restUntil) return;
-  restTimer = setInterval(() => {
-    const w = D.active; if (!w) return clearInterval(restTimer);
-    const left = w.restUntil - Date.now(), el = $('#rest-t');
+  if (document.hidden || !D.active || (!D.active.restUntil && !autoNext)) return;
+  restTimer = setInterval(tick, 1000);
+}
+function tick() {
+  const w = D.active; if (!w) { autoNext = null; return clearInterval(restTimer); }
+  const now = Date.now();
+  if (w.restUntil) {
+    const left = w.restUntil - now, el = $('#rest-t');
     if (left <= 0) {
-      clearInterval(restTimer); w.restUntil = 0; saveActive();
-      alarm(); if (tab === 'workout') { const r = $('#rest'); if (r) r.remove(); }
+      w.restUntil = 0; saveActive(); alarm();
+      if (tab === 'workout') { const r = $('#rest'); if (r) r.remove(); }
       toast('Отдых закончился — следующий подход');
-      return;
-    }
-    if (el) el.textContent = mmss(left);
-  }, 250);
+    } else if (el) el.textContent = mmss(left);
+  }
+  if (autoNext) {
+    const left = autoNext.until - now, el = $('#auto-t');
+    if (autoNext.from !== w.cur || tab !== 'workout') autoNext = null;
+    else if (left <= 0) { autoNext = null; w.cur++; saveActive(); entry = null; render(); scrollTo(0, 0); }
+    else if (el) el.textContent = Math.ceil(left / 1000);
+  }
+  if (!w.restUntil && !autoNext) clearInterval(restTimer);
 }
 function alarm() {
   if (navigator.vibrate) navigator.vibrate([250, 120, 250, 120, 400]);
@@ -156,7 +171,7 @@ async function keepAwake() {
     } else if (tab !== 'workout' && wakeLock) { wakeLock.release(); wakeLock = null; }
   } catch (e) { /* нет поддержки — не страшно */ }
 }
-document.addEventListener('visibilitychange', () => { if (!document.hidden) { keepAwake(); restLoop(); } });
+document.addEventListener('visibilitychange', () => { if (!document.hidden) keepAwake(); restLoop(); });
 
 // ───── Запись подхода ─────
 function readEntry() {
@@ -175,6 +190,8 @@ function logSet() {
   it.sets.push(s);
   const more = workSets(it).length < it.plan.sets || w.cur < w.items.length - 1;
   w.restUntil = more ? Date.now() + it.plan.rest * 1000 : 0;
+  // последний по плану подход — через 7 с сам переходим к следующему упражнению (отдых продолжается)
+  autoNext = workSets(it).length === it.plan.sets && w.cur < w.items.length - 1 ? { until: Date.now() + AUTO_NEXT_MS, from: w.cur } : null;
   saveActive(); render(); restLoop();
 }
 
@@ -289,9 +306,9 @@ document.addEventListener('click', async ev => {
     case 'sheetclose': closeSheet(); break;
     case 'ck': checkSt[ds.k] = +ds.v; sheetCheck(checkSt.dayId); break;
     case 'wo-begin': startWorkout(checkSt.dayId, !!ds.light); break;
-    case 'wo-back': readEntry(); tab = 'today'; render(); keepAwake(); break;
-    case 'wo-go': readEntry(); w.cur = +ds.i; saveActive(); render(); scrollTo(0, 0); break;
-    case 'wo-next': readEntry(); w.cur = Math.min(w.items.length - 1, w.cur + 1); saveActive(); render(); scrollTo(0, 0); break;
+    case 'wo-back': autoNext = null; readEntry(); tab = 'today'; render(); keepAwake(); break;
+    case 'wo-go': autoNext = null; readEntry(); w.cur = +ds.i; saveActive(); render(); scrollTo(0, 0); break;
+    case 'wo-next': autoNext = null; readEntry(); w.cur = Math.min(w.items.length - 1, w.cur + 1); saveActive(); render(); scrollTo(0, 0); break;
     case 'wo-finish': readEntry(); finishWorkout(); break;
     case 'wo-cancel':
       if (!confirm('Отменить тренировку? Ничего не сохранится.')) return;
@@ -312,6 +329,7 @@ document.addEventListener('click', async ev => {
       render(); break;
     }
     case 'wo-rest-add': w.restUntil = Math.max(w.restUntil, Date.now()) + 30000; saveActive(); restLoop(); { const t = $('#rest-t'); if (t) t.textContent = mmss(w.restUntil - Date.now()); } break;
+    case 'wo-stay': autoNext = null; render(); break;
     case 'wo-rest-skip': w.restUntil = 0; saveActive(); clearInterval(restTimer); render(); break;
     case 'wo-set': sheetSet(+ds.i); break;
     case 'wo-set-save': {
