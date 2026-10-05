@@ -240,3 +240,10 @@ details.photos .pics.small{margin-bottom:6px}
 .auto-next{display:flex;align-items:center;gap:10px;margin-top:8px;padding:8px 8px 8px 14px;border-radius:12px;background:rgba(198,241,53,.1);color:var(--acc);font-weight:700;font-size:14px}
 .auto-next span{flex:1;min-width:0}
 .auto-next .btn{width:auto;min-height:44px;padding:8px 14px;font-size:14px}
+
+/* 0.8: таймер планки */
+.hold-go{margin-bottom:10px;font-size:17px}
+.hold{display:flex;align-items:center;gap:10px;margin-bottom:10px;padding:10px 12px;border-radius:14px;background:var(--card2)}
+.hold b{font-size:44px;line-height:1;color:var(--acc)}
+.hold span{flex:1;color:var(--muted);font-size:14px}
+.hold .btn{width:auto;padding:10px 14px}

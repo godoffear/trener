@@ -2,7 +2,7 @@
 // При установке кладёт в кэш всё приложение, включая фото упражнений (берёт список из js/exercises.js).
 // Дальше отдаёт файлы из кэша сразу, а свежую версию тихо подтягивает в фоне.
 // При выпуске подними VERSION (вместе с APP_VERSION в js/app.js) — так телефон заберёт обновление.
-const VERSION = '0.7.2';
+const VERSION = '0.8';
 const CACHE = 'trener-' + VERSION;
 importScripts('js/exercises.js');
 const SHELL = ['./', './index.html', './manifest.webmanifest', './css/app.css',
@@ -32,4 +32,9 @@ self.addEventListener('fetch', e => {
     if (hit) { e.waitUntil(net.catch(() => {})); return hit; }
     return net;
   }));
+});
+// Нажатие на уведомление «Отдых закончился» — открыть приложение
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(cs => cs.length ? cs[0].focus() : self.clients.openWindow('./')));
 });

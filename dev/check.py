@@ -169,6 +169,14 @@ async def flow(b):
     await pg.reload(); await pg.wait_for_timeout(500)
     ok(await pg.query_selector('[data-a="resume"]'), 'после перезапуска — «Продолжить тренировку»')
     await pg.click('[data-a="resume"]'); ok('3 / 10' in await pg.inner_text('.wo-title'), 'продолжает с того же упражнения')
+    # таймер для виса (упражнение на время): до конца — пишется цель, «Стоп» — сколько прошло
+    await pg.click('[data-a="wo-go"][data-i="9"]'); await pg.wait_for_timeout(200)
+    await pg.fill('#e-sec', '3'); await pg.click('[data-a="wo-hold"]'); await pg.wait_for_timeout(4500)
+    ok('3 с' in await pg.inner_text('.sets'), 'таймер виса: дошёл до конца — записал 3 с')
+    if await pg.query_selector('[data-a="wo-rest-skip"]'): await pg.click('[data-a="wo-rest-skip"]')
+    await pg.fill('#e-sec', '30'); await pg.click('[data-a="wo-hold"]'); await pg.wait_for_timeout(2200); await pg.click('[data-a="wo-hold-stop"]'); await pg.wait_for_timeout(200)
+    ok('2 с' in await pg.inner_text('.sets'), '«Стоп» — записал, сколько прошло (2 с)')
+    await pg.click('[data-a="wo-go"][data-i="2"]')
     for w_, h_ in [(780, 360), (360, 780)]:
         await pg.set_viewport_size({'width': w_, 'height': h_}); await pg.wait_for_timeout(100)
         wide = await pg.evaluate(WIDE); ok(not wide, f'{w_}×{h_} экран тренировки не вылезает {wide or ""}')

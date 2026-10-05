@@ -101,7 +101,12 @@ function vWorkout() {
     <button class="ibtn" data-a="wo-dec" data-f="${f}">−</button><input class="inp num" id="e-${f}" inputmode="${mode}" value="${val != null ? fmt(val) : ''}">
     <button class="ibtn" data-a="wo-inc" data-f="${f}">+</button></div></div>`;
   h += `<div class="entry"><div class="muted small">Подход ${done + 1} из ${need}${done >= need ? ' · сверх плана' : ''}</div>`;
-  if (e.type === 'time') h += stepper('sec', 'Секунд', entry.sec, 'numeric');
+  if (e.type === 'time') {
+    h += stepper('sec', 'Цель, секунд', entry.sec, 'numeric');
+    h += hold ? `<div class="hold"><b class="num" id="hold-t">${Math.ceil((hold.start + hold.target * 1000 - Date.now()) / 1000)}</b><span>из ${hold.target} с</span>
+        <button class="btn main" data-a="wo-hold-stop">Стоп — записать</button></div>`
+      : `<button class="btn main hold-go" data-a="wo-hold">▶ Старт ${entry.sec || it.plan.lo} с</button>`;
+  }
   else {
     h += e.type === 'bw' ? stepper('reps', 'Повторы', entry.reps, 'numeric')
       : stepper('kg', kgLabel, entry.kg, 'decimal') + stepper('reps', 'Повторы', entry.reps, 'numeric');
@@ -126,11 +131,12 @@ const mmss = ms => { const s = Math.max(0, Math.ceil(ms / 1000)); return `${Math
 // ───── Таймер отдыха ─────
 // Один таймер раз в секунду: отдых и автопереход к следующему упражнению.
 // Когда приложение свёрнуто — таймер не крутится (меньше нагрев), при возврате запускается снова.
-let autoNext = null;  // { until, from } — переход через 7 с после последнего подхода
+let autoNext = null, lastPip = 0;
+let hold = null;      // { start, target } — идёт таймер упражнения на время (планка, вис)  // { until, from } — переход через 7 с после последнего подхода
 const AUTO_NEXT_MS = 7000;
 function restLoop() {
   clearInterval(restTimer);
-  if (document.hidden || !D.active || (!D.active.restUntil && !autoNext)) return;
+  if (document.hidden || !D.active || (!D.active.restUntil && !autoNext && !hold)) return;
   restTimer = setInterval(tick, 1000);
 }
 function tick() {
@@ -142,7 +148,10 @@ function tick() {
       w.restUntil = 0; saveActive(); alarm();
       if (tab === 'workout') { const r = $('#rest'); if (r) r.remove(); }
       toast('Отдых закончился — следующий подход');
-    } else if (el) el.textContent = mmss(left);
+    } else {
+      if (el) el.textContent = mmss(left);
+      const sec = Math.ceil(left / 1000); if (sec <= 3 && sec !== lastPip) { lastPip = sec; pip(); }
+    }
   }
   if (autoNext) {
     const left = autoNext.until - now, el = $('#auto-t');
@@ -150,18 +159,41 @@ function tick() {
     else if (left <= 0) { autoNext = null; w.cur++; saveActive(); entry = null; render(); scrollTo(0, 0); }
     else if (el) el.textContent = Math.ceil(left / 1000);
   }
-  if (!w.restUntil && !autoNext) clearInterval(restTimer);
-}
-function alarm() {
-  if (navigator.vibrate) navigator.vibrate([250, 120, 250, 120, 400]);
-  if (!audioCtx) return;
-  const t = audioCtx.currentTime;
-  for (let i = 0; i < 3; i++) {
-    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
-    o.frequency.value = 880; g.gain.setValueAtTime(0.25, t + i * 0.28); g.gain.exponentialRampToValueAtTime(0.001, t + i * 0.28 + 0.2);
-    o.connect(g); g.connect(audioCtx.destination); o.start(t + i * 0.28); o.stop(t + i * 0.28 + 0.22);
+  if (hold) {
+    const left = hold.start + hold.target * 1000 - now, el = $('#hold-t');
+    if (left <= 0) { const t = hold.target; hold = null; alarm('Время! Записал ' + t + ' с'); entry.sec = t; logSet(true); return; }
+    if (el) el.textContent = Math.ceil(left / 1000);
+    const sec = Math.ceil(left / 1000); if (sec <= 3 && sec !== lastPip) { lastPip = sec; pip(); }
   }
+  if (!w.restUntil && !autoNext && !hold) clearInterval(restTimer);
 }
+// Конец отдыха: громкий трёхтональный сигнал (квадратная волна — слышно сквозь музыку), длинная вибрация
+// и системное уведомление — его звук Android проигрывает поверх музыки, даже в наушниках.
+function tone(t, f, d, vol) {
+  const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+  o.type = 'square'; o.frequency.value = f;
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.01); g.gain.setValueAtTime(vol, t + d - 0.03); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+  o.connect(g); g.connect(audioCtx.destination); o.start(t); o.stop(t + d + 0.02);
+}
+function pip() { if (!audioCtx) return; audioCtx.resume && audioCtx.resume(); tone(audioCtx.currentTime, 1200, 0.09, 0.35); }
+function alarm(text) {
+  if (navigator.vibrate) navigator.vibrate([600, 150, 600, 150, 900]);
+  if (audioCtx) {
+    audioCtx.resume && audioCtx.resume();
+    const t = audioCtx.currentTime;
+    for (let r = 0; r < 3; r++) [988, 1319, 1760].forEach((f, k) => tone(t + r * 0.75 + k * 0.17, f, 0.15, 0.6));
+  }
+  notify(text || 'Отдых закончился — следующий подход');
+}
+async function notify(text) {
+  try {
+    if (!('Notification' in window) || Notification.permission !== 'granted' || !navigator.serviceWorker) return;
+    const reg = await navigator.serviceWorker.ready;
+    reg.showNotification('Тренер', { body: text, tag: 'rest', renotify: true, vibrate: [600, 150, 600], icon: 'icons/icon-192.png', badge: 'icons/icon-192.png', silent: false });
+  } catch (e) { /* не страшно */ }
+}
+// Разрешение на уведомления спрашиваем один раз — при старте тренировки (нужно нажатие)
+function askNotify() { try { if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission(); } catch (e) {} }
 
 // Экран не гаснет, пока открыта тренировка
 async function keepAwake() {
@@ -177,9 +209,9 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) keep
 function readEntry() {
   for (const f of ['kg', 'reps', 'sec']) { const el = $('#e-' + f); if (el) entry[f] = num(el.value); }
 }
-function logSet() {
+function logSet(fromHold) {
   const w = D.active, it = curItem(), e = EX[it.ex];
-  readEntry();
+  if (!fromHold) readEntry();
   const s = { t: Date.now() };
   if (e.type === 'time') { if (!entry.sec) return toast('Впиши секунды'); s.sec = Math.round(entry.sec); }
   else {
@@ -189,7 +221,7 @@ function logSet() {
   }
   it.sets.push(s);
   const more = workSets(it).length < it.plan.sets || w.cur < w.items.length - 1;
-  w.restUntil = more ? Date.now() + it.plan.rest * 1000 : 0;
+  w.restUntil = more ? Date.now() + it.plan.rest * 1000 : 0; lastPip = 0;
   // последний по плану подход — через 7 с сам переходим к следующему упражнению (отдых продолжается)
   autoNext = workSets(it).length === it.plan.sets && w.cur < w.items.length - 1 ? { until: Date.now() + AUTO_NEXT_MS, from: w.cur } : null;
   saveActive(); render(); restLoop();
@@ -305,10 +337,10 @@ document.addEventListener('click', async ev => {
   switch (a) {
     case 'sheetclose': closeSheet(); break;
     case 'ck': checkSt[ds.k] = +ds.v; sheetCheck(checkSt.dayId); break;
-    case 'wo-begin': startWorkout(checkSt.dayId, !!ds.light); break;
-    case 'wo-back': autoNext = null; readEntry(); tab = 'today'; render(); keepAwake(); break;
-    case 'wo-go': autoNext = null; readEntry(); w.cur = +ds.i; saveActive(); render(); scrollTo(0, 0); break;
-    case 'wo-next': autoNext = null; readEntry(); w.cur = Math.min(w.items.length - 1, w.cur + 1); saveActive(); render(); scrollTo(0, 0); break;
+    case 'wo-begin': askNotify(); startWorkout(checkSt.dayId, !!ds.light); break;
+    case 'wo-back': autoNext = null; hold = null; readEntry(); tab = 'today'; render(); keepAwake(); break;
+    case 'wo-go': autoNext = null; hold = null; readEntry(); w.cur = +ds.i; saveActive(); render(); scrollTo(0, 0); break;
+    case 'wo-next': autoNext = null; hold = null; readEntry(); w.cur = Math.min(w.items.length - 1, w.cur + 1); saveActive(); render(); scrollTo(0, 0); break;
     case 'wo-finish': readEntry(); finishWorkout(); break;
     case 'wo-cancel':
       if (!confirm('Отменить тренировку? Ничего не сохранится.')) return;
@@ -321,7 +353,16 @@ document.addEventListener('click', async ev => {
       if (ds.f === 'sec') entry.sec = Math.max(5, (entry.sec || 0) + d * 5);
       render(); break;
     }
-    case 'wo-log': logSet(); break;
+    case 'wo-log': hold = null; logSet(); break;
+    case 'wo-hold': {
+      readEntry(); const target = Math.round(entry.sec || curItem().plan.lo);
+      w.restUntil = 0; autoNext = null; lastPip = 0; hold = { start: Date.now(), target };
+      render(); restLoop(); break;
+    }
+    case 'wo-hold-stop': {
+      if (!hold) return; const done = Math.max(1, Math.round((Date.now() - hold.start) / 1000));
+      hold = null; entry.sec = done; logSet(true); toast(`Записал ${done} с`); break;
+    }
     case 'wo-like': {
       const it = curItem(), prev = lastSession(it.ex); if (!prev) return;
       const ps = workSets(prev.it), s = ps[workSets(it).length] || ps[ps.length - 1];
