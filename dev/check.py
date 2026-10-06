@@ -76,6 +76,7 @@ async def main():
             if errs: print('Ошибки JS:', errs)
             await ctx.close()
         await weigh(b)
+        await sync(b)
         await flow(b)
         await b.close()
     srv.shutdown()
@@ -107,6 +108,31 @@ async def weigh(b):
     async with pg.expect_download(timeout=5000) as d: await pg.click('[data-a="export"]')
     fn = (await d.value).suggested_filename
     ok(fn.startswith('Тренер_2026-10-05_09-') and fn.endswith('.json'), f'копия скачивается: {fn}')
+    if errs: print('Ошибки JS:', errs)
+    await ctx.close()
+
+async def sync(b):
+    """Копия в GitHub: токен из Рациона (racion-gh), после тренировки — PUT trener/latest.json и trener/history/…; данные Рациона не трогаются."""
+    ctx = await b.new_context(viewport={'width': 360, 'height': 780}); pg = await ctx.new_page(); errs = []; puts = []
+    pg.on('pageerror', lambda e: errs.append(str(e))); pg.on('dialog', lambda d: asyncio.ensure_future(d.accept()))
+    async def gh(route):
+        r = route.request
+        if r.method == 'PUT': puts.append(r.url.split('/contents/')[1]); await route.fulfill(status=201, body='{}')
+        else: await route.fulfill(status=404, body='{}')
+    await ctx.route('https://api.github.com/**', gh)
+    await pg.add_init_script("(()=>{const RD=Date,fix=new RD('2026-10-06T10:00').getTime(),t0=RD.now();class FD extends RD{constructor(...a){if(a.length)super(...a);else super(fix+RD.now()-t0)}static now(){return fix+RD.now()-t0}};window.Date=FD})();")
+    await pg.goto(BASE + '/'); await pg.wait_for_timeout(300)
+    await pg.evaluate("localStorage.setItem('racion-gh', JSON.stringify({repo:'godoffear/racion-data', token:'github_pat_'+'x'.repeat(40), last:1}))")
+    await pg.fill('#s-weight', '82,5'); await pg.click('[data-a="welcome"]'); await pg.wait_for_timeout(300)
+    ok = lambda c, t: print(f'  {t}:', 'OK' if c else 'НЕТ')
+    await pg.click('[data-a="start"]'); await pg.click('[data-a="wo-begin"]')
+    await pg.fill('#e-kg', '30'); await pg.fill('#e-reps', '8'); await pg.click('[data-a="wo-log"]')
+    await pg.click('[data-a="wo-finish"]'); await pg.wait_for_timeout(1500)
+    ok(puts == ['trener/latest.json', 'trener/history/trener_2026-10-06.json'], f'после тренировки ушло в GitHub: {puts}')
+    cfg = await pg.evaluate("JSON.parse(localStorage.getItem('racion-gh'))")
+    ok(cfg.get('last') == 1 and 'err' not in cfg, 'настройки Рациона не тронуты')
+    await pg.click('.sheet-x'); await pg.click('[data-a="tab"][data-k="more"]')
+    ok('Отправлено' in await pg.inner_text('#app'), '«Ещё»: «Копия в GitHub — отправлено …»')
     if errs: print('Ошибки JS:', errs)
     await ctx.close()
 

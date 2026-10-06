@@ -291,6 +291,7 @@ async function finishWorkout() {
     items: w.items.filter(it => it.sets.length || it.warm).map(it => ({ ex: it.ex, orig: it.orig || null, plan: it.plan, warm: it.warm, sets: it.sets, note: it.note, disc: it.disc })) };
   rec.records = findRecords(rec);
   D.workouts.push(rec); await dbPut('workouts', rec);
+  if (ghOn()) ghPush();  // копия в GitHub — сама после каждой тренировки
   D.active = null; await saveActive();
   clearInterval(restTimer); tab = 'today'; selDay = null; render(); keepAwake();
   sheetSummary(rec);

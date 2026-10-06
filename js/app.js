@@ -1,6 +1,6 @@
 // Тренер — экраны и навигация. Ванильный JS без зависимостей.
 // Отрисовка: функции v*() возвращают HTML-строку, клики ловит один обработчик по data-a.
-const APP_VERSION = '0.11';
+const APP_VERSION = '0.12';
 
 // ───── Даты ─────
 const pad = n => String(n).padStart(2, '0');
@@ -334,6 +334,7 @@ function vMore() {
       <p class="muted small" style="margin:0 0 12px">Все данные одним файлом. Сохрани в Google Диск или Telegram — восстановишь на любом телефоне.</p>
       <div class="row2"><button class="btn" data-a="export">Скачать</button><button class="btn" data-a="import">Загрузить</button></div>
       <input type="file" id="importfile" accept="application/json,.json" hidden></div>
+    ${ghCard()}
     <button class="btn ghost danger" data-a="progreset">Вернуть программу по умолчанию</button>
     <p class="muted small" style="text-align:center;margin-top:16px">Тренер ${APP_VERSION} · фото упражнений — free-exercise-db (public domain)</p>`;
 }
@@ -460,8 +461,11 @@ document.addEventListener('click', async ev => {
       const data = await dbExport();
       const url = URL.createObjectURL(new Blob([JSON.stringify(data)], { type: 'application/json' }));
       const l = document.createElement('a'); l.href = url; const t = new Date(); l.download = `Тренер_${dk(t)}_${pad(t.getHours())}-${pad(t.getMinutes())}.json`; l.click();  // Тренер_2026-10-04_18-30.json
-      setTimeout(() => URL.revokeObjectURL(url), 5000); break;
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+      if (ghOn()) ghPush().then(ok => { toast(ok ? 'Файл скачан и отправлен в GitHub' : 'Файл скачан, в GitHub не ушло: ' + ghSt().err); if (tab === 'more') render(); });
+      break;
     }
+    case 'ghnow': toast('Отправляю…'); ghPush().then(ok => { toast(ok ? 'Отправлено в GitHub' : 'Не ушло: ' + ghSt().err); render(); }); break;
     case 'import': $('#importfile').click(); break;
   }
 });

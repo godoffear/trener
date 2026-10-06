@@ -254,3 +254,5 @@ details.photos .pics.small{margin-bottom:6px}
 .warm{min-height:36px;padding:4px 10px;font-size:12px;border-width:1px;margin-bottom:8px;gap:8px}
 .warm i{width:18px;height:18px;border-radius:5px}
 .warm.on{display:inline-flex;width:auto;min-height:28px;border:0;padding:2px 8px;color:var(--muted);font-size:11px;background:var(--card2)}
+
+.warn-t{color:var(--warn)}
