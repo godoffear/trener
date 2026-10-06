@@ -45,8 +45,8 @@ async function dbLoad() {
   D.settings = Object.assign(defaultSettings(), get('settings'));
   D.program = get('program') || defaultProgram();
   // 0.5: программа v2 (около часа, отдых 90/60 с) — заменяем старую, дни недели оставляем
-  // v1, v2, v3 → v4 (0.9): программа короче (≈ час по реальному темпу), дни недели остаются
-  if ((D.program.v || 1) < 4) { const week = D.program.week; D.program = defaultProgram(); D.program.week = week; }
+  // v1–v4 → v5 (0.10): программа на рост мышц ≈ час, без турника; дни недели остаются
+  if ((D.program.v || 1) < 5) { const week = D.program.week; D.program = defaultProgram(); D.program.week = week; }
   if (D.program.v !== PROGRAM_V) { D.program.v = PROGRAM_V; await dbPut('kv', { id: 'program', val: D.program }); }
   D.active = get('active') || null;
   D.insights = get('insights') || { weekly: [], plateaus: [] };

@@ -1,6 +1,6 @@
 // Тренер — экраны и навигация. Ванильный JS без зависимостей.
 // Отрисовка: функции v*() возвращают HTML-строку, клики ловит один обработчик по data-a.
-const APP_VERSION = '0.9';
+const APP_VERSION = '0.10';
 
 // ───── Даты ─────
 const pad = n => String(n).padStart(2, '0');
@@ -48,8 +48,13 @@ function lastWork(ex, item) {
   if (!ws.length) return null;
   return EX[ex].type === 'assist' ? Math.min(...ws) : Math.max(...ws);
 }
-const curAssist = () => lastWork('gravitron', { lo: 1, hi: 99 });
-// Пора ли менять вис на негативы: помощь меньше 30% веса тела.
+// Помощь в гравитроне на прошлой тренировке — по самому тяжёлому подходу (все подходы должны быть с этой помощью или меньше)
+function curAssist() {
+  const h = exHistory('gravitron'); if (!h.length) return null;
+  const ks = workSets(h[h.length - 1].it).map(s => s.kg).filter(x => x != null);
+  return ks.length ? Math.max(...ks) : null;
+}
+// Пора добавлять негативы: во всех подходах прошлого раза помощь меньше 30% веса тела
 function negReady() {
   const a = curAssist(), bw = D.settings.weight;
   return a != null && bw && a < bw * 0.3;
@@ -57,7 +62,8 @@ function negReady() {
 // Упражнения дня с учётом этапа пути к подтягиванию.
 function dayItems(dayId) {
   const day = D.program.days[dayId]; if (!day) return [];
-  return day.items.map(x => x.pull === 'hang' && negReady() ? Object.assign({}, x, { ex: 'neg', sets: 3, lo: 3, hi: 5, rest: 90 }) : x);
+  const neg = negReady();
+  return day.items.filter(x => x.pull !== 'neg' || neg);
 }
 
 function repsLabel(x) {
@@ -83,7 +89,7 @@ function render() {
   const v = { today: vToday, prog: vProgram, stats: vStats, more: vMore, workout: vWorkout }[tab];
   $('#app').innerHTML = v();
   document.body.classList.toggle('in-workout', tab === 'workout');
-  keepAwake();
+  keepAwake(); clockLoop();
   $('#tabs').innerHTML = [['today', 'Сегодня'], ['prog', 'Программа'], ['stats', 'Прогресс'], ['more', 'Ещё']]
     .map(([k, t]) => `<button data-a="tab" data-k="${k}" class="${tab === k ? 'on' : ''}">${I[k]}${t}</button>`).join('');
 }
@@ -213,9 +219,9 @@ function vPull() {
     const pct = first > 0 ? Math.round((first - cur) / first * 100) : 100;
     body = `<div><span class="num big">${fmt(cur)}</span> <span class="muted">кг помощи</span></div>
       <div class="bar"><i style="width:${Math.max(4, pct)}%"></i></div>
-      <p class="muted small" style="margin:0">${stage === 1 ? `Этап 1 из 3: гравитрон + вис. До негативов — помощь меньше ${fmt(Math.round(target * 10) / 10)} кг, ≈ ${left} ${left === 1 ? 'шаг' : left < 5 ? 'шага' : 'шагов'} по ${fmt(step)} кг.`
-        : stage === 2 ? `Этап 2 из 3: негативы. До подтягивания без помощи ≈ ${left} ${left === 1 ? 'шаг' : left < 5 ? 'шага' : 'шагов'} по ${fmt(step)} кг.`
-        : 'Этап 3: подтягиваешься сам! 🎉'}</p>`;
+      <p class="muted small" style="margin:0">${stage === 1 ? `Этап 1 из 3: снижаешь помощь в гравитроне. До негативов — помощь меньше ${fmt(Math.round(target * 10) / 10)} кг, ≈ ${left} ${left === 1 ? 'шаг' : left < 5 ? 'шага' : 'шагов'} по ${fmt(step)} кг.`
+        : stage === 2 ? `Этап 2 из 3: + негативы в гравитроне (вниз 4–5 с). До подтягивания без помощи ≈ ${left} ${left === 1 ? 'шаг' : left < 5 ? 'шага' : 'шагов'} по ${fmt(step)} кг.`
+        : 'Этап 3: подтягиваешься сам — на рукоятях гравитрона без платформы! 🎉'}</p>`;
   }
   return `<div class="card"><div class="card-h"><h2>Путь к подтягиванию</h2></div>${body}</div>`;
 }
@@ -235,7 +241,7 @@ function vProgram() {
     h += '<ul class="exl">';
     day.items.forEach((x, i) => {
       const act = progEdit ? `data-a="edit" data-d="${id}" data-i="${i}"` : `data-a="tech" data-ex="${x.ex}"`;
-      h += `<li class="tap" ${act}><div class="n"><b>${esc(EX[x.ex].name)}</b><span>${repsLabel(x)}</span></div>${progEdit ? '<div class="w muted">›</div>' : ''}</li>`;
+      h += `<li class="tap" ${act}><div class="n"><b>${esc(EX[x.ex].name)}</b><span>${repsLabel(x)}${x.pull === 'neg' ? ' · появятся, когда помощь < 30% веса' : ''}</span></div>${progEdit ? '<div class="w muted">›</div>' : ''}</li>`;
     });
     h += '</ul>';
     if (progEdit) h += `<button class="btn ghost" data-a="add" data-d="${id}">+ Упражнение</button>`;
@@ -269,7 +275,7 @@ let edit = null;
 // Замены: сначала из справочника упражнения, потом остальные той же группы.
 function replaceOptions(ex) {
   const e = EX[ex], out = e.subs.slice();
-  for (const id in EX) if (id !== ex && !out.includes(id) && EX[id].group === e.group && id !== 'hang' && id !== 'neg') out.push(id);
+  for (const id in EX) if (id !== ex && !out.includes(id) && EX[id].group === e.group && !['hang', 'neg', 'hlr', 'grav_neg'].includes(id)) out.push(id);
   return out;
 }
 
@@ -277,7 +283,7 @@ function sheetAdd(dayId) {
   let h = '<h2>Добавить упражнение</h2>';
   for (const g in GROUPS) {
     h += `<div class="sec">${GROUPS[g]}</div><ul class="exl ex-pick">`;
-    for (const id in EX) if (EX[id].group === g && id !== 'neg')
+    for (const id in EX) if (EX[id].group === g && !['hang', 'neg', 'hlr'].includes(id))
       h += `<li data-a="add-ex" data-d="${dayId}" data-ex="${id}"><div class="n"><b>${esc(EX[id].name)}</b><span>${esc(EX[id].muscles)}</span></div><div class="w muted">+</div></li>`;
     h += '</ul>';
   }

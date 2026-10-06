@@ -131,8 +131,10 @@ async def flow(b):
     for k in ['sleep', 'energy', 'sore']: await pg.click(f'[data-a="ck"][data-k="{k}"][data-v="1"]')
     ok(await pg.query_selector('[data-a="wo-begin"][data-light="1"]'), 'плохое самочувствие — предлагает облегчённо')
     await pg.click('[data-a="wo-begin"][data-light="1"]'); await pg.wait_for_timeout(200)
-    ok('1 / 7' in await pg.inner_text('.wo-title') and 'облегчённо' in await pg.inner_text('.wo-title'), 'экран тренировки, облегчённый режим')
+    ok('1 / 6' in await pg.inner_text('.wo-title') and 'облегчённо' in await pg.inner_text('.wo-title'), 'экран тренировки, облегчённый режим')
     ok(await pg.query_selector('details.photos:not([open])'), 'фото на экране тренировки свёрнуты')
+    c1 = await pg.inner_text('#wo-clock'); await pg.wait_for_timeout(2100); c2 = await pg.inner_text('#wo-clock')
+    ok(c1 != c2 and ':' in c2, f'часы тренировки идут ({c1} → {c2})')
     await pg.screenshot(path='/tmp/trener-wo-1.png', full_page=True)
     # гравитрон: 3 подхода (4−1)
     await pg.fill('#e-kg', '35'); await pg.fill('#e-reps', '8'); await pg.click('[data-a="wo-log"]')
@@ -142,14 +144,14 @@ async def flow(b):
     ok((await pg.inner_text('.sets')).count('×') == 3 and '30' in await pg.inner_text('.sets'), 'три подхода, «−» снижает помощь на шаг')
     ok(await pg.query_selector('#auto-t'), 'после последнего подхода — «Следующее упражнение через 7 с»')
     await pg.click('[data-a="wo-stay"]'); await pg.wait_for_timeout(1500)
-    ok(not await pg.query_selector('#auto-t') and '1 / 7' in await pg.inner_text('.wo-title'), '«Остаться» отменяет переход')
+    ok(not await pg.query_selector('#auto-t') and '1 / 6' in await pg.inner_text('.wo-title'), '«Остаться» отменяет переход')
     await pg.click('[data-a="wo-log"]'); await pg.wait_for_timeout(8000)
-    ok(False, 'сверх плана не переходит') if '2 / 7' in await pg.inner_text('.wo-title') else ok(True, 'подход сверх плана — без автоперехода')
+    ok(False, 'сверх плана не переходит') if '2 / 6' in await pg.inner_text('.wo-title') else ok(True, 'подход сверх плана — без автоперехода')
     await pg.click('[data-a="wo-set"][data-i="3"]'); await pg.click('[data-a="wo-set-del"]'); await pg.click('[data-a="wo-set"][data-i="2"]'); await pg.click('[data-a="wo-set-del"]')
     await pg.click('[data-a="wo-log"]'); await pg.wait_for_timeout(7600)
-    ok('2 / 7' in await pg.inner_text('.wo-title') and await pg.query_selector('#rest'), 'через 7 с сам перешёл к следующему, отдых идёт')
+    ok('2 / 6' in await pg.inner_text('.wo-title') and await pg.query_selector('#rest'), 'через 7 с сам перешёл к следующему, отдых идёт')
     # тяга: разминка, замена, дискомфорт, заметка
-    await pg.click('[data-a="wo-warm"]'); ok(await pg.query_selector('.warm.on'), 'разминочный подход отмечен')
+    await pg.click('[data-a="wo-warm"]'); ok(await pg.query_selector('.warm.on') and 'разминка' in await pg.inner_text('.warm.on'), 'разминка отмечена и свернулась')
     await pg.fill('#e-kg', '40'); await pg.fill('#e-reps', '10'); await pg.click('[data-a="wo-log"]')
     await pg.click('[data-a="wo-disc"]'); await pg.click('[data-a="dz"][data-v="Плечо"]'); await pg.click('[data-a="dl"][data-v="2"]'); await pg.click('[data-a="wo-disc-save"]')
     ok('Прибавки по этому' in await pg.inner_text('.sheet'), 'дискомфорт — без прибавки, предлагает замену')
@@ -168,11 +170,11 @@ async def flow(b):
     # перезапуск посреди тренировки
     await pg.reload(); await pg.wait_for_timeout(500)
     ok(await pg.query_selector('[data-a="resume"]'), 'после перезапуска — «Продолжить тренировку»')
-    await pg.click('[data-a="resume"]'); ok('3 / 7' in await pg.inner_text('.wo-title'), 'продолжает с того же упражнения')
+    await pg.click('[data-a="resume"]'); ok('3 / 6' in await pg.inner_text('.wo-title'), 'продолжает с того же упражнения')
     # таймер для виса (упражнение на время): до конца — пишется цель, «Стоп» — сколько прошло
-    await pg.click('[data-a="wo-go"][data-i="6"]'); await pg.wait_for_timeout(200)
+    await pg.evaluate("D.active.items[5].ex='plank'; D.active.cur=5; entry=null; render()"); await pg.wait_for_timeout(200)
     await pg.fill('#e-sec', '3'); await pg.click('[data-a="wo-hold"]'); await pg.wait_for_timeout(4500)
-    ok('3 с' in await pg.inner_text('.sets'), 'таймер виса: дошёл до конца — записал 3 с')
+    ok('3 с' in await pg.inner_text('.sets'), 'таймер планки: дошёл до конца — записал 3 с')
     if await pg.query_selector('[data-a="wo-rest-skip"]'): await pg.click('[data-a="wo-rest-skip"]')
     await pg.fill('#e-sec', '30'); await pg.click('[data-a="wo-hold"]'); await pg.wait_for_timeout(2200); await pg.click('[data-a="wo-hold-stop"]'); await pg.wait_for_timeout(200)
     ok('2 с' in await pg.inner_text('.sets'), '«Стоп» — записал, сколько прошло (2 с)')
@@ -201,7 +203,11 @@ async def flow(b):
     # переезд старой программы → v4 (≈ час), дни недели сохраняются
     await pg.evaluate("(async()=>{const p=defaultProgram();p.v=3;p.week[3]='A';p.days.A.items.push({ex:'crunch_m',sets:3,lo:10,hi:15,rest:60});await dbPut('kv',{id:'program',val:p})})()")
     await pg.reload(); await pg.wait_for_timeout(500)
-    ok(await pg.evaluate("D.program.v===4 && !JSON.stringify(D.program).includes('crunch_m') && D.program.week[3]==='A' && Object.values(D.program.days).every(d=>dayMinutes(d)<=62)"), 'старая программа → новая (≈ час), дни недели сохранены')
+    ok(await pg.evaluate("D.program.v===5 && !JSON.stringify(D.program).includes('crunch_m') && D.program.week[3]==='A' && Object.values(D.program.days).every(d=>dayMinutes(d)<=62)"), 'старая программа → новая (≈ час), дни недели сохранены')
+    neg = await pg.evaluate("""(()=>{const mk=ks=>({id:'g'+ks,date:'2026-10-01',day:'B',done:true,items:[{ex:'gravitron',plan:{sets:3,lo:6,hi:10},sets:ks.map(k=>({kg:k,reps:8}))}]});
+      D.workouts=[mk([20,20,20])]; const a=dayItems('B').some(x=>x.ex==='grav_neg');
+      D.workouts=[mk([30,20,20])]; const b=dayItems('B').some(x=>x.ex==='grav_neg'); D.workouts=[]; return a&&!b})()""")
+    ok(neg, 'негативы в гравитроне — только когда во всех подходах помощь < 30% веса')
     if errs: print('Ошибки JS:', errs)
     await ctx.close()
 

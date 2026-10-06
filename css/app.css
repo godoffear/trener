@@ -247,3 +247,10 @@ details.photos .pics.small{margin-bottom:6px}
 .hold b{font-size:44px;line-height:1;color:var(--acc)}
 .hold span{flex:1;color:var(--muted);font-size:14px}
 .hold .btn{width:auto;padding:10px 14px}
+
+/* 0.10: часы тренировки в шапке (шапка прилипает к верху), разминка мелкой строкой */
+.wo-top{position:sticky;top:0;z-index:15;background:var(--bg);padding:8px 0;margin-top:-8px}
+.wo-clock{flex:none;font-size:15px;color:var(--acc);background:var(--card);border-radius:10px;padding:8px 10px;min-width:64px;text-align:center}
+.warm{min-height:36px;padding:4px 10px;font-size:12px;border-width:1px;margin-bottom:8px;gap:8px}
+.warm i{width:18px;height:18px;border-radius:5px}
+.warm.on{display:inline-flex;width:auto;min-height:28px;border:0;padding:2px 8px;color:var(--muted);font-size:11px;background:var(--card2)}

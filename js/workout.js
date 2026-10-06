@@ -77,6 +77,7 @@ function vWorkout() {
   const prev = lastSession(it.ex), rec = lastWork(it.ex, it.plan);
   let h = `<div class="wo-top"><button class="ibtn" data-a="wo-back" aria-label="Выйти на главную">‹</button>
     <div class="wo-title"><b class="num">${w.cur + 1} / ${n}</b><span>${esc(day ? day.name : '')}${w.light ? ' · облегчённо' : ''}</span></div>
+    <div class="wo-clock num" id="wo-clock" aria-label="Время тренировки">${clockText()}</div>
     <button class="btn small-btn" data-a="wo-finish">Завершить</button></div>
     <div class="wo-dots">${w.items.map((x, i) => `<button data-a="wo-go" data-i="${i}" class="${i === w.cur ? 'on' : ''}${workSets(x).length >= x.plan.sets ? ' done' : ''}" aria-label="Упражнение ${i + 1}">${i + 1}</button>`).join('')}</div>`;
 
@@ -92,7 +93,8 @@ function vWorkout() {
     h += `<p class="hint">Подбери ${e.type === 'assist' ? 'помощь' : 'вес'}, с которым сделаешь нужное число повторов и останется 2–3 в запасе. Начни с лёгкого и добавляй от подхода к подходу.</p>`;
   if (it.disc.length) h += `<div class="warnbox">Дискомфорт: ${esc(it.disc.map(d => `${d.zone} ${d.lvl}/5`).join(', '))}. Прибавки не будет.</div>`;
   if (e.base && e.type === 'w')
-    h += `<button class="warm${it.warm ? ' on' : ''}" data-a="wo-warm"><i>${it.warm ? I.check : ''}</i>Разминочный подход — ${e.equip === 'barbell' ? 'пустой гриф' : 'лёгкий вес'} × 10–12</button>`;
+    h += it.warm ? `<button class="warm on" data-a="wo-warm">✓ разминка</button>`
+      : `<button class="warm" data-a="wo-warm"><i></i>Разминка: ${e.equip === 'barbell' ? 'пустой гриф' : 'лёгкий вес'} × 10–12</button>`;
   if (it.sets.length) h += `<div class="sets">${it.sets.map((s, i) => `<button class="setchip" data-a="wo-set" data-i="${i}"><b>${i + 1}</b>${setText(e, s)}</button>`).join('')}</div>`;
 
   // Ввод подхода
@@ -134,6 +136,14 @@ const mmss = ms => { const s = Math.max(0, Math.ceil(ms / 1000)); return `${Math
 let autoNext = null, lastPip = 0;
 let hold = null;      // { start, target } — идёт таймер упражнения на время (планка, вис)  // { until, from } — переход через 7 с после последнего подхода
 const AUTO_NEXT_MS = 7000;
+// Часы всей тренировки в шапке: сколько прошло с «Начать тренировку». Обновляются раз в секунду, только на экране тренировки.
+let clockT = 0;
+function clockText() { const s = Math.max(0, Math.floor((Date.now() - D.active.start) / 1000)), m = Math.floor(s / 60); return `${m >= 60 ? Math.floor(m / 60) + ':' + pad(m % 60) : m}:${pad(s % 60)}`; }
+function clockLoop() {
+  clearInterval(clockT);
+  if (document.hidden || tab !== 'workout' || !D.active) return;
+  clockT = setInterval(() => { const el = $('#wo-clock'); if (!el || !D.active || tab !== 'workout') return clearInterval(clockT); el.textContent = clockText(); }, 1000);
+}
 function restLoop() {
   clearInterval(restTimer);
   if (document.hidden || !D.active || (!D.active.restUntil && !autoNext && !hold)) return;
@@ -203,7 +213,7 @@ async function keepAwake() {
     } else if (tab !== 'workout' && wakeLock) { wakeLock.release(); wakeLock = null; }
   } catch (e) { /* нет поддержки — не страшно */ }
 }
-document.addEventListener('visibilitychange', () => { if (!document.hidden) keepAwake(); restLoop(); });
+document.addEventListener('visibilitychange', () => { if (!document.hidden) keepAwake(); restLoop(); clockLoop(); });
 
 // ───── Запись подхода ─────
 function readEntry() {
