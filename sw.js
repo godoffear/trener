@@ -2,7 +2,7 @@
 // При установке кладёт в кэш всё приложение, включая фото упражнений (берёт список из js/exercises.js).
 // Дальше отдаёт файлы из кэша сразу, а свежую версию тихо подтягивает в фоне.
 // При выпуске подними VERSION (вместе с APP_VERSION в js/app.js) — так телефон заберёт обновление.
-const VERSION = '0.10';
+const VERSION = '0.11';
 const CACHE = 'trener-' + VERSION;
 importScripts('js/exercises.js');
 const SHELL = ['./', './index.html', './manifest.webmanifest', './css/app.css',

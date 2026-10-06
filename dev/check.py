@@ -135,6 +135,13 @@ async def flow(b):
     ok(await pg.query_selector('details.photos:not([open])'), 'фото на экране тренировки свёрнуты')
     c1 = await pg.inner_text('#wo-clock'); await pg.wait_for_timeout(2100); c2 = await pg.inner_text('#wo-clock')
     ok(c1 != c2 and ':' in c2, f'часы тренировки идут ({c1} → {c2})')
+    # простой 10 минут → пауза, часы стоят, «Продолжить» — время простоя не считается
+    await pg.evaluate("D.active.start -= 12*60000; D.active.lastAct = Date.now() - 11*60000"); await pg.wait_for_timeout(1300)
+    ok(await pg.query_selector('[data-a="wo-resume"]'), 'нет действий 10 мин — окно «Тренировка на паузе»')
+    c3 = await pg.inner_text('#wo-clock'); await pg.wait_for_timeout(1300); c4 = await pg.inner_text('#wo-clock')
+    ok(c3 == c4, f'на паузе часы стоят ({c3})')
+    await pg.click('[data-a="wo-resume"]'); await pg.wait_for_timeout(1200)
+    ok(not await pg.query_selector('.sheet') and await pg.evaluate("D.active.paused > 10*60000 && !D.active.pauseAt"), '«Продолжить» — простой не идёт в время тренировки')
     await pg.screenshot(path='/tmp/trener-wo-1.png', full_page=True)
     # гравитрон: 3 подхода (4−1)
     await pg.fill('#e-kg', '35'); await pg.fill('#e-reps', '8'); await pg.click('[data-a="wo-log"]')

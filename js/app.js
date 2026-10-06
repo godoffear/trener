@@ -1,6 +1,6 @@
 // Тренер — экраны и навигация. Ванильный JS без зависимостей.
 // Отрисовка: функции v*() возвращают HTML-строку, клики ловит один обработчик по data-a.
-const APP_VERSION = '0.10';
+const APP_VERSION = '0.11';
 
 // ───── Даты ─────
 const pad = n => String(n).padStart(2, '0');
@@ -192,7 +192,7 @@ function sheetWeigh() {
 // Сделанная тренировка: что и как, рекорды — звёздочкой
 function vDone(w) {
   const day = D.program.days[w.day], recs = new Set((w.records || []).map(r => r.ex));
-  const min = w.end && w.start ? Math.round((w.end - w.start) / 60000) : null, ton = tonnage(w);
+  const min = w.end && w.start ? Math.round((w.end - w.start - (w.paused || 0)) / 60000) : null, ton = tonnage(w);
   let h = `<div class="card"><div class="card-h"><div><h2>${esc(day ? day.name : 'Тренировка')}</h2>
     <div class="muted small">${[min ? min + ' мин' : '', ton ? ton.toLocaleString('ru-RU') + ' кг' : '', w.light ? 'облегчённо' : ''].filter(Boolean).join(' · ')}</div></div>
     <span class="tag acc">сделано</span></div><ul class="exl">`;
@@ -387,7 +387,7 @@ document.addEventListener('click', async ev => {
     case 'progedit': progEdit = !progEdit; render(); break;
     case 'tech': sheetTech(ds.ex); break;
     case 'start': sheetCheck(ds.d); break;
-    case 'resume': tab = 'workout'; render(); restLoop(); scrollTo(0, 0); break;
+    case 'resume': tab = 'workout'; render(); restLoop(); scrollTo(0, 0); checkIdle(); break;
     case 'day': selDay = ds.k || null; render(); break;
     case 'wk': selDay = dk(addDays(selDay ? pk(selDay) : new Date(), +ds.v)); render(); break;
     case 'wdel': {

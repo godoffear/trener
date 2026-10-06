@@ -138,11 +138,30 @@ let hold = null;      // { start, target } — идёт таймер упраж�
 const AUTO_NEXT_MS = 7000;
 // Часы всей тренировки в шапке: сколько прошло с «Начать тренировку». Обновляются раз в секунду, только на экране тренировки.
 let clockT = 0;
-function clockText() { const s = Math.max(0, Math.floor((Date.now() - D.active.start) / 1000)), m = Math.floor(s / 60); return `${m >= 60 ? Math.floor(m / 60) + ':' + pad(m % 60) : m}:${pad(s % 60)}`; }
+// Чистое время тренировки: без пауз (простой > 10 мин)
+const activeMs = w => (w.pauseAt || Date.now()) - w.start - (w.paused || 0);
+function clockText() { const s = Math.max(0, Math.floor(activeMs(D.active) / 1000)), m = Math.floor(s / 60); return `${m >= 60 ? Math.floor(m / 60) + ':' + pad(m % 60) : m}:${pad(s % 60)}`; }
 function clockLoop() {
   clearInterval(clockT);
   if (document.hidden || tab !== 'workout' || !D.active) return;
-  clockT = setInterval(() => { const el = $('#wo-clock'); if (!el || !D.active || tab !== 'workout') return clearInterval(clockT); el.textContent = clockText(); }, 1000);
+  clockT = setInterval(() => { const el = $('#wo-clock'); if (!el || !D.active || tab !== 'workout') return clearInterval(clockT); if (checkIdle()) return; el.textContent = clockText(); }, 1000);
+}
+// Простой: 10 минут без действий — пауза (часы встают на моменте последнего действия) и вопрос «Продолжить / Завершить»
+const IDLE_MS = 10 * 60 * 1000;
+const lastAct = w => w.lastAct || Math.max(w.start, ...w.items.flatMap(it => it.sets.map(s => s.t || 0)));
+function touch() { const w = D.active; if (w && !w.pauseAt) w.lastAct = Date.now(); }
+function checkIdle() {
+  const w = D.active; if (!w) return false;
+  if (!w.pauseAt && Date.now() - lastAct(w) > IDLE_MS) { w.pauseAt = lastAct(w); w.restUntil = 0; autoNext = null; hold = null; saveActive(); }
+  if (w.pauseAt && !(sheetOpen && $('[data-a="wo-resume"]'))) { sheetPaused(); return true; }
+  return !!w.pauseAt;
+}
+function sheetPaused() {
+  const w = D.active, min = Math.round(activeMs(w) / 60000);
+  openSheet(`<h2>Тренировка на паузе</h2>
+    <p class="muted" style="margin:0 0 14px">10 минут без действий — часы остановились на ${min} ${plural(min, 'минуте', 'минутах', 'минутах')}. Время простоя в тренировку не идёт.</p>
+    <button class="btn main" data-a="wo-resume">Продолжить</button>
+    <button class="btn" style="margin-top:8px" data-a="wo-finish-paused">Завершить тренировку</button>`);
 }
 function restLoop() {
   clearInterval(restTimer);
@@ -213,7 +232,7 @@ async function keepAwake() {
     } else if (tab !== 'workout' && wakeLock) { wakeLock.release(); wakeLock = null; }
   } catch (e) { /* нет поддержки — не страшно */ }
 }
-document.addEventListener('visibilitychange', () => { if (!document.hidden) keepAwake(); restLoop(); clockLoop(); });
+document.addEventListener('visibilitychange', () => { if (!document.hidden) { keepAwake(); if (tab === 'workout') checkIdle(); } restLoop(); clockLoop(); });
 
 // ───── Запись подхода ─────
 function readEntry() {
@@ -267,7 +286,8 @@ async function finishWorkout() {
   }
   const left = w.items.reduce((a, it) => a + Math.max(0, it.plan.sets - workSets(it).length), 0);
   if (left && !confirm(`Осталось подходов: ${left}. Завершить тренировку?`)) return;
-  const rec = { id: w.id, date: w.date, day: w.day, start: w.start, end: Date.now(), check: w.check, light: w.light, done: true,
+  const end = w.pauseAt || Date.now();
+  const rec = { id: w.id, date: w.date, day: w.day, start: w.start, end, paused: w.paused || 0, check: w.check, light: w.light, done: true,
     items: w.items.filter(it => it.sets.length || it.warm).map(it => ({ ex: it.ex, orig: it.orig || null, plan: it.plan, warm: it.warm, sets: it.sets, note: it.note, disc: it.disc })) };
   rec.records = findRecords(rec);
   D.workouts.push(rec); await dbPut('workouts', rec);
@@ -276,7 +296,7 @@ async function finishWorkout() {
   sheetSummary(rec);
 }
 function sheetSummary(w) {
-  const min = Math.max(1, Math.round((w.end - w.start) / 60000)), ton = tonnage(w), sets = w.items.reduce((a, it) => a + workSets(it).length, 0);
+  const min = Math.max(1, Math.round((w.end - w.start - (w.paused || 0)) / 60000)), ton = tonnage(w), sets = w.items.reduce((a, it) => a + workSets(it).length, 0);
   const prev = D.workouts.filter(x => x.done && x.day === w.day && x.date < w.date).slice(-1)[0];
   let cmp = '';
   if (prev && ton) { const pt = tonnage(prev); if (pt) { const d = Math.round((ton - pt) / pt * 100); cmp = `${d > 0 ? '+' : ''}${d}% к прошлому разу`; } }
@@ -344,7 +364,10 @@ document.addEventListener('click', async ev => {
   if (!/^(wo-|ck$|dz$|dl$|sheetclose$)/.test(a)) return;
   if (!audioCtx && window.AudioContext) try { audioCtx = new AudioContext(); } catch (e) {}
   const w = D.active;
+  if (a !== 'wo-resume' && a !== 'wo-finish-paused') touch();
   switch (a) {
+    case 'wo-resume': if (w && w.pauseAt) { w.paused = (w.paused || 0) + Date.now() - w.pauseAt; w.pauseAt = 0; w.lastAct = Date.now(); saveActive(); } closeSheet(); render(); break;
+    case 'wo-finish-paused': closeSheet(); finishWorkout(); break;
     case 'sheetclose': closeSheet(); break;
     case 'ck': checkSt[ds.k] = +ds.v; sheetCheck(checkSt.dayId); break;
     case 'wo-begin': askNotify(); startWorkout(checkSt.dayId, !!ds.light); break;
@@ -415,4 +438,5 @@ document.addEventListener('click', async ev => {
   }
 });
 document.addEventListener('input', ev => {
+  if (D.active && /^(e-|n-text)/.test(ev.target.id)) touch();
   if (ev.target.id === 'n-text' && D.active) { curItem().note = ev.target.value.trim(); clearTimeout(noteT); noteT = setTimeout(saveActive, 400); } if (entry && /^e-/.test(ev.target.id)) entry[ev.target.id.slice(2)] = num(ev.target.value); });
