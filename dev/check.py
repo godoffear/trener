@@ -46,6 +46,7 @@ async def main():
         await pg.click('[data-a="tab"][data-k="prog"]'); await pg.click('.exl [data-a="tech"]'); await pg.wait_for_timeout(400)
         print('Фото в технике под спойлером:', 'OK' if await pg.query_selector('.sheet details.photos:not([open])') else 'НЕТ')
         await pg.click('.sheet details.photos>summary'); await pg.wait_for_timeout(300)
+        print('Схема мышц в «Технике» видна сразу:', 'OK' if await pg.evaluate("!!document.querySelector('.sheet > .mmap .mm-p') && document.querySelector('.sheet > .mmap').offsetHeight>100") else 'НЕТ')
         ph = await pg.evaluate("[...document.querySelectorAll('.sheet .pics img')].length===2 && [...document.querySelectorAll('.sheet .pics img')].every(i=>i.naturalWidth>0)")
         print('Фото в технике без интернета:', 'OK' if ph else 'НЕТ')
         await ctx.close()

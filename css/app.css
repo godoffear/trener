@@ -256,3 +256,14 @@ details.photos .pics.small{margin-bottom:6px}
 .warm.on{display:inline-flex;width:auto;min-height:28px;border:0;padding:2px 8px;color:var(--muted);font-size:11px;background:var(--card2)}
 
 .warn-t{color:var(--warn)}
+
+/* 0.13: схема мышц */
+.mmap{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:4px 0 12px;max-width:360px}
+.mmap figure{margin:0;text-align:center}
+.mmap svg{width:100%;height:auto;max-height:180px;display:block}
+.mmap figcaption{font-size:11px;color:var(--muted);margin-top:2px}
+.mmap polygon{stroke:var(--bg);stroke-width:.4}
+.mm-o{fill:#3A4048}.mm-x{fill:#2C3137}.mm-s{fill:rgba(198,241,53,.38)}.mm-p{fill:var(--acc)}
+.mm-leg{grid-column:1/-1;display:flex;gap:14px;justify-content:center;font-size:12px;color:var(--muted)}
+.mm-leg i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.mm-leg i.mm-p{background:var(--acc)}.mm-leg i.mm-s{background:rgba(198,241,53,.38)}

@@ -1,6 +1,6 @@
 // Тренер — экраны и навигация. Ванильный JS без зависимостей.
 // Отрисовка: функции v*() возвращают HTML-строку, клики ловит один обработчик по data-a.
-const APP_VERSION = '0.12';
+const APP_VERSION = '0.13';
 
 // ───── Даты ─────
 const pad = n => String(n).padStart(2, '0');
@@ -292,9 +292,11 @@ function sheetAdd(dayId) {
 
 // ───── Техника упражнения ─────
 // Фото старт/финиш на всю ширину, целиком, без обрезки — везде под спойлером «Фото»
-function photosHTML(e) {
+// withMap — схема мышц внутри спойлера (экран тренировки); в «Технике» и при замене схема видна сразу под спойлером
+function photosHTML(e, withMap) {
   const f = (n, t) => `<figure><img src="img/ex/${e.img}/${n}.jpg" alt="${t}" loading="lazy"><figcaption>${t}</figcaption></figure>`;
-  return `<details class="fold photos"><summary>Фото</summary><div class="pics full">${f(0, 'Старт')}${f(1, 'Финиш')}</div>${e.photo ? `<p class="note" style="margin:0 0 8px">${esc(e.photo)}</p>` : ''}</details>`;
+  return `<details class="fold photos"><summary>${withMap ? 'Фото и мышцы' : 'Фото'}</summary><div class="pics full">${f(0, 'Старт')}${f(1, 'Финиш')}</div>${e.photo ? `<p class="note" style="margin:0 0 8px">${esc(e.photo)}</p>` : ''}${withMap ? musclesHTML(e) : ''}</details>`
+    + (withMap ? '' : musclesHTML(e));
 }
 function sheetTech(id) {
   const e = EX[id];
