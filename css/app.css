@@ -267,3 +267,8 @@ details.photos .pics.small{margin-bottom:6px}
 .mm-leg{grid-column:1/-1;display:flex;gap:14px;justify-content:center;font-size:12px;color:var(--muted)}
 .mm-leg i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
 .mm-leg i.mm-p{background:var(--acc)}.mm-leg i.mm-s{background:rgba(198,241,53,.38)}
+
+/* 0.14: подсказки прогрессии */
+.prog{font-size:13px;color:var(--muted);margin:2px 0 4px}
+.prog.up{color:var(--acc);font-weight:700}
+.prog.down{color:var(--warn)}

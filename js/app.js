@@ -1,6 +1,6 @@
 // Тренер — экраны и навигация. Ванильный JS без зависимостей.
 // Отрисовка: функции v*() возвращают HTML-строку, клики ловит один обработчик по data-a.
-const APP_VERSION = '0.13';
+const APP_VERSION = '0.14';
 
 // ───── Даты ─────
 const pad = n => String(n).padStart(2, '0');
@@ -34,19 +34,23 @@ const isTrain = p => !!D.program.days[p];
 // Подходы упражнения по всем завершённым тренировкам: [{date, it:{ex,sets,…}}], новые в конце.
 function exHistory(ex) {
   const out = [];
-  for (const w of D.workouts) if (w.done) for (const it of w.items) if (it.ex === ex && it.sets && it.sets.some(s => !s.warm)) out.push({ date: w.date, it });
+  for (const w of D.workouts) if (w.done) for (const it of w.items) if (it.ex === ex && it.sets && it.sets.some(s => !s.warm)) out.push({ date: w.date, it, light: w.light });
   return out;
 }
-// Последний рабочий вес (до этапа прогрессии — просто лучший подход прошлой тренировки).
-// Для гравитрона — наименьшая помощь.
-function lastWork(ex, item) {
-  const h = exHistory(ex); if (!h.length) return null;
-  const sets = h[h.length - 1].it.sets.filter(s => !s.warm);
-  const inRange = sets.filter(s => s.reps >= item.lo && s.reps <= item.hi);
-  const pool = inRange.length ? inRange : sets;
-  const ws = pool.map(s => s.kg).filter(x => x != null);
-  if (!ws.length) return null;
-  return EX[ex].type === 'assist' ? Math.min(...ws) : Math.max(...ws);
+// Подсказка по весу на сегодня — js/progression.js (двойная прогрессия по повторам)
+function progOf(ex, item, light) {
+  const e = EX[ex]; if (e.type !== 'w' && e.type !== 'assist') return { kind: 'none' };
+  const sessions = exHistory(ex).map(h => ({ sets: workSets(h.it), disc: h.it.disc || [], light: !!h.light }));
+  return Progression.suggest({ assist: e.type === 'assist', sessions, lo: item.lo, hi: item.hi,
+    step: item.step != null ? item.step : e.step, planSets: item.sets, light: !!light });
+}
+// Короткая подпись веса и подсказка для экрана тренировки
+function progText(r, e) {
+  const unit = e.type === 'assist' ? 'помощь ' : '', kg = v => unit + fmt(v) + ' кг';
+  if (r.kind === 'up') return { w: '↑ ' + kg(r.kg), hint: `${e.type === 'assist' ? 'Пора снизить помощь' : 'Пора прибавить'}: в прошлый раз ${fmt(r.from)} кг × ${r.reps}+ во всех подходах` };
+  if (r.kind === 'down') return { w: kg(r.kg), hint: `Повторов не хватило при ${fmt(r.from)} кг — ${e.type === 'assist' ? 'добавь помощи' : 'сбавь вес'}` };
+  if (r.kind === 'same') return { w: kg(r.kg), hint: (r.held === 'disc' ? 'Без прибавки: был дискомфорт. ' : r.held === 'light' ? 'Без прибавки: облегчённый день. ' : '') + `Цель: ${r.goal} повт. в каждом подходе` };
+  return { w: '', hint: '' };
 }
 // Помощь в гравитроне на прошлой тренировке — по самому тяжёлому подходу (все подходы должны быть с этой помощью или меньше)
 function curAssist() {
@@ -71,14 +75,8 @@ function repsLabel(x) {
   return `${x.sets}×${r}${e.type === 'time' ? ' с' : ''}`;
 }
 // Вес справа в строке упражнения. Пусто, если истории нет — подсказка одна на всю карточку.
-function workLabel(x) {
-  const e = EX[x.ex];
-  if (e.type !== 'w' && e.type !== 'assist') return '';
-  const w = lastWork(x.ex, x);
-  if (w == null) return '';
-  return (e.type === 'assist' ? 'помощь ' : '') + fmt(w) + ' кг';
-}
-const needsPick = x => (EX[x.ex].type === 'w' || EX[x.ex].type === 'assist') && lastWork(x.ex, x) == null;
+function workLabel(x) { const r = progOf(x.ex, x); return r.kind === 'none' || r.kind === 'start' ? '' : progText(r, EX[x.ex]).w; }
+const needsPick = x => (EX[x.ex].type === 'w' || EX[x.ex].type === 'assist') && progOf(x.ex, x).kind === 'start';
 const perDb = x => EX[x.ex].equip === 'dumbbell' && workLabel(x) ? ' · на гантель' : '';
 
 // ───── Состояние экрана ─────
@@ -137,7 +135,7 @@ function vToday() {
     const pick = items.filter(needsPick).length, weighted = items.filter(x => EX[x.ex].type === 'w' || EX[x.ex].type === 'assist').length;
     if (pick && !past) h += `<p class="hint">${pick === weighted ? 'Первая тренировка — веса подберёшь по ходу' : 'Где веса нет — подберёшь по ходу'}</p>`;
     h += '<ul class="exl">';
-    for (const x of items) h += `<li class="tap" data-a="tech" data-ex="${x.ex}"><div class="n"><b>${esc(EX[x.ex].name)}</b><span>${repsLabel(x)}${perDb(x)}</span></div><div class="w">${workLabel(x)}</div></li>`;
+    for (const x of items) h += `<li class="tap" data-a="tech" data-ex="${x.ex}"><div class="n"><b>${esc(EX[x.ex].name)}</b><span>${repsLabel(x)}${perDb(x)}</span></div><div class="w${progOf(x.ex, x).kind === 'up' ? ' up' : ''}">${workLabel(x)}</div></li>`;
     h += '</ul>';
     h += '</div>';
     if (isToday && items.some(x => x.ex === 'gravitron')) h += vPull();

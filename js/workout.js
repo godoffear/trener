@@ -52,7 +52,7 @@ function ensureEntry() {
   if (entry && entry.key === key) return;
   const last = it.sets[it.sets.length - 1], prev = lastSession(it.ex);
   const prevSet = prev ? workSets(prev.it)[it.sets.length] || workSets(prev.it).slice(-1)[0] : null;
-  const rec = lastWork(it.ex, it.plan);
+  const pr = progOf(it.ex, it.plan, w.light), rec = pr.kg != null ? pr.kg : null;
   entry = {
     key,
     kg: last ? last.kg : rec != null ? rec : prevSet ? prevSet.kg : null,
@@ -74,7 +74,7 @@ function vWorkout() {
   const it = curItem(), e = EX[it.ex], n = w.items.length, day = D.program.days[w.day];
   ensureEntry();
   const done = workSets(it).length, need = it.plan.sets;
-  const prev = lastSession(it.ex), rec = lastWork(it.ex, it.plan);
+  const prev = lastSession(it.ex), pr = progOf(it.ex, it.plan, w.light), pt = progText(pr, e);
   let h = `<div class="wo-top"><button class="ibtn" data-a="wo-back" aria-label="Выйти на главную">‹</button>
     <div class="wo-title"><b class="num">${w.cur + 1} / ${n}</b><span>${esc(day ? day.name : '')}${w.light ? ' · облегчённо' : ''}</span></div>
     <div class="wo-clock num" id="wo-clock" aria-label="Время тренировки">${clockText()}</div>
@@ -86,7 +86,8 @@ function vWorkout() {
     <div class="wo-name" data-a="tech" data-ex="${it.ex}"><h2>${esc(e.name)}${it.orig ? ' <span class="tag">замена</span>' : ''}</h2><span class="muted small">Техника ›</span></div>
     ${photosHTML(e, true)}
     <div class="cue"><b>${esc(e.cue)}</b><span class="muted small">Темп: ${esc(e.tempo)}</span></div>
-    <div class="wo-info"><div><span class="muted">Сегодня</span> ${repsLabel(Object.assign({ ex: it.ex }, it.plan))}${rec != null && (e.type === 'w' || e.type === 'assist') ? ` · ${e.type === 'assist' ? 'помощь ' : ''}${fmt(rec)} кг` : ''}${e.equip === 'dumbbell' ? ' · на гантель' : ''}</div>
+    <div class="wo-info"><div><span class="muted">Сегодня</span> ${repsLabel(Object.assign({ ex: it.ex }, it.plan))}${pt.w ? ` · <b class="${pr.kind === 'up' ? 'acc' : ''}">${pt.w}</b>` : ''}${e.equip === 'dumbbell' ? ' · на гантель' : ''}</div>
+      ${pt.hint ? `<div class="prog ${pr.kind}">${esc(pt.hint)}</div>` : ''}
       ${prev ? `<div><span class="muted">В прошлый раз</span> ${workSets(prev.it).map(s => setText(e, s)).join(', ')}</div>` : ''}
       ${prev && prev.it.note ? `<div class="wo-note">${esc(prev.it.note)}</div>` : ''}</div>`;
   if (!prev && (e.type === 'w' || e.type === 'assist'))
@@ -286,7 +287,9 @@ async function finishWorkout() {
   }
   const left = w.items.reduce((a, it) => a + Math.max(0, it.plan.sets - workSets(it).length), 0);
   if (left && !confirm(`Осталось подходов: ${left}. Завершить тренировку?`)) return;
-  const end = w.pauseAt || Date.now();
+  // Забыл нажать «Завершить»: если после последнего действия прошло больше 10 минут, тренировка закончилась тогда
+  const idleTail = Date.now() - lastAct(w) > IDLE_MS;
+  const end = w.pauseAt || (idleTail ? lastAct(w) + 60000 : Date.now());
   const rec = { id: w.id, date: w.date, day: w.day, start: w.start, end, paused: w.paused || 0, check: w.check, light: w.light, done: true,
     items: w.items.filter(it => it.sets.length || it.warm).map(it => ({ ex: it.ex, orig: it.orig || null, plan: it.plan, warm: it.warm, sets: it.sets, note: it.note, disc: it.disc })) };
   rec.records = findRecords(rec);
@@ -365,7 +368,7 @@ document.addEventListener('click', async ev => {
   if (!/^(wo-|ck$|dz$|dl$|sheetclose$)/.test(a)) return;
   if (!audioCtx && window.AudioContext) try { audioCtx = new AudioContext(); } catch (e) {}
   const w = D.active;
-  if (a !== 'wo-resume' && a !== 'wo-finish-paused') touch();
+  if (a !== 'wo-resume' && a !== 'wo-finish-paused' && a !== 'wo-finish') touch();
   switch (a) {
     case 'wo-resume': if (w && w.pauseAt) { w.paused = (w.paused || 0) + Date.now() - w.pauseAt; w.pauseAt = 0; w.lastAct = Date.now(); saveActive(); } closeSheet(); render(); break;
     case 'wo-finish-paused': closeSheet(); finishWorkout(); break;

@@ -238,6 +238,10 @@ async def flow(b):
     await pg.evaluate("(async()=>{const p=defaultProgram();p.v=3;p.week[3]='A';p.days.A.items.push({ex:'crunch_m',sets:3,lo:10,hi:15,rest:60});await dbPut('kv',{id:'program',val:p})})()")
     await pg.reload(); await pg.wait_for_timeout(500)
     ok(await pg.evaluate("D.program.v===5 && !JSON.stringify(D.program).includes('crunch_m') && D.program.week[3]==='A' && Object.values(D.program.days).every(d=>dayMinutes(d)<=62)"), 'старая программа → новая (≈ час), дни недели сохранены')
+    # прогрессия: после тренировки с 20×10 во всех подходах «пора прибавить» → 22,5, поле веса уже заполнено
+    prog = await pg.evaluate("""(()=>{D.workouts=[{id:'p1',date:'2026-10-05',day:'A',done:true,items:[{ex:'bench',plan:{sets:4,lo:6,hi:10},sets:[20,20,20,20].map(k=>({kg:k,reps:10}))}]}];
+      const it=D.program.days.A.items[0]; const r=progOf('bench',it,false); D.workouts=[]; return r.kind==='up'&&r.kg===22.5})()""")
+    ok(prog, 'прогрессия: 20×10 во всех подходах → «пора прибавить» 22,5 кг')
     neg = await pg.evaluate("""(()=>{const mk=ks=>({id:'g'+ks,date:'2026-10-01',day:'B',done:true,items:[{ex:'gravitron',plan:{sets:3,lo:6,hi:10},sets:ks.map(k=>({kg:k,reps:8}))}]});
       D.workouts=[mk([20,20,20])]; const a=dayItems('B').some(x=>x.ex==='grav_neg');
       D.workouts=[mk([30,20,20])]; const b=dayItems('B').some(x=>x.ex==='grav_neg'); D.workouts=[]; return a&&!b})()""")

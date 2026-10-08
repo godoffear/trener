@@ -2,11 +2,11 @@
 // При установке кладёт в кэш всё приложение, включая фото упражнений (берёт список из js/exercises.js).
 // Дальше отдаёт файлы из кэша сразу, а свежую версию тихо подтягивает в фоне.
 // При выпуске подними VERSION (вместе с APP_VERSION в js/app.js) — так телефон заберёт обновление.
-const VERSION = '0.13';
+const VERSION = '0.14';
 const CACHE = 'trener-' + VERSION;
 importScripts('js/exercises.js');
 const SHELL = ['./', './index.html', './manifest.webmanifest', './css/app.css',
-  './js/exercises.js', './js/program.js', './js/db.js', './js/quotes.js', './js/muscles.js', './js/sync.js', './js/app.js', './js/workout.js',
+  './js/exercises.js', './js/program.js', './js/db.js', './js/quotes.js', './js/muscles.js', './js/progression.js', './js/sync.js', './js/app.js', './js/workout.js',
   './fonts/Manrope.woff2', './fonts/Unbounded.woff2',
   './icons/icon-192.png', './icons/icon-512.png', './icons/icon-maskable-512.png', './icons/favicon.png'];
 const PHOTOS = [...new Set(Object.values(EX).map(e => e.img))].flatMap(img => [`./img/ex/${img}/0.jpg`, `./img/ex/${img}/1.jpg`]);
