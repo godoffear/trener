@@ -283,3 +283,7 @@ ul.snd>li.on .snd-pick i{border-color:var(--acc);background:radial-gradient(var(
 ul.snd>li.on .snd-pick{color:var(--acc)}
 .snd-pips{display:flex;align-items:center;gap:10px;font-size:14px;color:var(--muted);min-height:44px}
 .snd-pips input{width:22px;height:22px;accent-color:var(--acc)}
+
+/* 0.16: как считается вес */
+.wmode{display:flex;gap:6px;margin:-4px 0 10px}
+.wmode .chip{flex:1;min-height:36px;font-size:12px;padding:4px 6px}

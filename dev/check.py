@@ -193,6 +193,10 @@ async def flow(b):
     ok('2 / 6' in await pg.inner_text('.wo-title') and await pg.query_selector('#rest'), 'через 7 с сам перешёл к следующему, отдых идёт')
     # тяга: разминка, замена, дискомфорт, заметка
     await pg.click('[data-a="wo-warm"]'); ok(await pg.query_selector('.warm.on') and 'разминка' in await pg.inner_text('.warm.on'), 'разминка отмечена и свернулась')
+    ok(await pg.query_selector('.wmode .chip.on'), 'переключатель «Общий вес / На каждую сторону» на экране упражнения')
+    await pg.click('.wmode [data-v="each"]'); await pg.wait_for_timeout(150)
+    ok('сторона' in await pg.inner_text('.entry'), 'режим «На каждую сторону»: подпись поля «Кг (сторона)»')
+    await pg.click('.wmode [data-v="total"]'); await pg.wait_for_timeout(150)
     await pg.fill('#e-kg', '40'); await pg.fill('#e-reps', '10'); await pg.click('[data-a="wo-log"]')
     await pg.click('[data-a="wo-disc"]'); await pg.click('[data-a="dz"][data-v="Плечо"]'); await pg.click('[data-a="dl"][data-v="2"]'); await pg.click('[data-a="wo-disc-save"]')
     ok('Прибавки по этому' in await pg.inner_text('.sheet'), 'дискомфорт — без прибавки, предлагает замену')
@@ -253,6 +257,17 @@ async def flow(b):
       D.workouts=[mk([20,20,20])]; const a=dayItems('B').some(x=>x.ex==='grav_neg');
       D.workouts=[mk([30,20,20])]; const b=dayItems('B').some(x=>x.ex==='grav_neg'); D.workouts=[]; return a&&!b})()""")
     ok(neg, 'негативы в гравитроне — только когда во всех подходах помощь < 30% веса')
+    wm = await pg.evaluate("""(()=>{const r={}; D.settings.wmode={};
+      D.workouts=[{id:'m1',date:'2026-10-01',day:'D',done:true,items:[{ex:'chest_press',plan:{sets:3,lo:8,hi:12},sets:[60,60,60].map(k=>({kg:k,reps:12,wm:'total'}))}]}];
+      const it=D.program.days.D.items.find(x=>x.ex==='chest_press');
+      r.total=progOf('chest_press',it).kind;
+      D.settings.wmode={chest_press:'each'}; r.each=progOf('chest_press',it).kind;
+      r.tEach=tonnage({items:[{ex:'chest_press',sets:[{kg:30,reps:10,wm:'each'}]}]}); r.tTot=tonnage({items:[{ex:'chest_press',sets:[{kg:30,reps:10,wm:'total'}]}]});
+      r.txt=setText(EX.chest_press,{kg:30,reps:10,wm:'each'}); r.db=setText(EX.incl_db,{kg:10,reps:12}); r.dbTot=setText(EX.incl_db,{kg:20,reps:12,wm:'total'});
+      D.workouts=[]; D.settings.wmode={}; return r})()""")
+    ok(wm['total']=='up' and wm['each']=='start', f"режимы веса не смешиваются в подсказках: {wm['total']} → {wm['each']}")
+    ok(wm['tEach']==600 and wm['tTot']==300, f"тоннаж: на каждую сторону ×2 ({wm['tEach']} против {wm['tTot']})")
+    ok(wm['txt'].startswith('по 30') and wm['db']=='10 × 12' and wm['dbTot'].startswith('обе 20'), f"подписи: «{wm['txt']}», гантель «{wm['db']}», обе «{wm['dbTot']}»")
     if errs: print('Ошибки JS:', errs)
     await ctx.close()
 

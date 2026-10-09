@@ -36,6 +36,7 @@ function defaultSettings() {
     sound: 'bell',         // звук конца отдыха (js/sounds.js)
     soundVol: 2,           // 1 тихо, 2 средне, 3 громко
     pips: true,            // писк за 3-2-1 с до конца отдыха
+    wmode: {},             // как считается вес упражнения: { id: 'total' | 'each' } (по умолчанию гантели — 'each', остальное — 'total')
   };
 }
 

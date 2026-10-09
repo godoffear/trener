@@ -1,6 +1,6 @@
 // Тренер — экраны и навигация. Ванильный JS без зависимостей.
 // Отрисовка: функции v*() возвращают HTML-строку, клики ловит один обработчик по data-a.
-const APP_VERSION = '0.15';
+const APP_VERSION = '0.16';
 
 // ───── Даты ─────
 const pad = n => String(n).padStart(2, '0');
@@ -40,7 +40,7 @@ function exHistory(ex) {
 // Подсказка по весу на сегодня — js/progression.js (двойная прогрессия по повторам)
 function progOf(ex, item, light) {
   const e = EX[ex]; if (e.type !== 'w' && e.type !== 'assist') return { kind: 'none' };
-  const sessions = exHistory(ex).map(h => ({ sets: workSets(h.it), disc: h.it.disc || [], light: !!h.light }));
+  const sessions = exHistory(ex).filter(h => sameMode(h, ex)).map(h => ({ sets: workSets(h.it), disc: h.it.disc || [], light: !!h.light }));
   return Progression.suggest({ assist: e.type === 'assist', sessions, lo: item.lo, hi: item.hi,
     step: item.step != null ? item.step : e.step, planSets: item.sets, light: !!light });
 }
@@ -77,7 +77,15 @@ function repsLabel(x) {
 // Вес справа в строке упражнения. Пусто, если истории нет — подсказка одна на всю карточку.
 function workLabel(x) { const r = progOf(x.ex, x); return r.kind === 'none' || r.kind === 'start' ? '' : progText(r, EX[x.ex]).w; }
 const needsPick = x => (EX[x.ex].type === 'w' || EX[x.ex].type === 'assist') && progOf(x.ex, x).kind === 'start';
-const perDb = x => EX[x.ex].equip === 'dumbbell' && workLabel(x) ? ' · на гантель' : '';
+// Как считается вес: 'total' — общий (штанга, блок, стек тренажёра), 'each' — на каждую сторону / одну гантель.
+// В подходе запоминается (s.wm), чтобы прошлые записи не менялись, если потом переключить; сравниваются только подходы в одном режиме.
+const defMode = ex => EX[ex].equip === 'dumbbell' ? 'each' : 'total';
+const modeOf = ex => (D.settings.wmode && D.settings.wmode[ex]) || defMode(ex);
+const setMode = (s, ex) => s.wm || defMode(ex);
+const sameMode = (h, ex) => { const ws = workSets(h.it); return !ws.length || setMode(ws[0], ex) === modeOf(ex); };
+const modeNote = ex => { const e = EX[ex], m = modeOf(ex); if (e.type !== 'w') return '';
+  return m === 'each' ? (e.equip === 'dumbbell' ? ' · на гантель' : ' · на каждую сторону') : (e.equip === 'dumbbell' ? ' · обе вместе' : ''); };
+const perDb = x => (modeOf(x.ex) !== defMode(x.ex) || (EX[x.ex].equip === 'dumbbell' && workLabel(x))) ? modeNote(x.ex) : '';
 
 // ───── Состояние экрана ─────
 let tab = 'today';

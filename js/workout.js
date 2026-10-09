@@ -8,14 +8,15 @@ const curItem = () => D.active.items[D.active.cur];
 const itemStep = it => it.plan.step != null ? it.plan.step : EX[it.ex].step;
 const workSets = it => (it.sets || []).filter(s => !s.warm);
 const e1rm = (kg, reps) => kg * (1 + reps / 30);
-const lastSession = ex => { const h = exHistory(ex); return h.length ? h[h.length - 1] : null; };
+const lastSession = ex => { const h = exHistory(ex).filter(x => sameMode(x, ex)); return h.length ? h[h.length - 1] : null; };
 
 function setText(e, s) {
   const r = s.rir != null && e.type !== 'time' ? ` · з${s.rir}` : '';
   if (e.type === 'time') return `${s.sec} с`;
   if (e.type === 'bw') return `${s.reps} раз${r}`;
   if (e.type === 'assist') return `помощь ${fmt(s.kg)} × ${s.reps}${r}`;
-  return `${fmt(s.kg)} × ${s.reps}${r}`;
+  const m = setMode(s, e.id), pre = m === 'each' && e.equip !== 'dumbbell' ? 'по ' : m === 'total' && e.equip === 'dumbbell' ? 'обе ' : '';
+  return `${pre}${fmt(s.kg)} × ${s.reps}${r}`;
 }
 
 // ───── Старт: три вопроса ─────
@@ -86,7 +87,7 @@ function vWorkout() {
     <div class="wo-name" data-a="tech" data-ex="${it.ex}"><h2>${esc(e.name)}${it.orig ? ' <span class="tag">замена</span>' : ''}</h2><span class="muted small">Техника ›</span></div>
     ${photosHTML(e, true)}
     <div class="cue"><b>${esc(e.cue)}</b><span class="muted small">Темп: ${esc(e.tempo)}</span></div>
-    <div class="wo-info"><div><span class="muted">Сегодня</span> ${repsLabel(Object.assign({ ex: it.ex }, it.plan))}${pt.w ? ` · <b class="${pr.kind === 'up' ? 'acc' : ''}">${pt.w}</b>` : ''}${e.equip === 'dumbbell' ? ' · на гантель' : ''}</div>
+    <div class="wo-info"><div><span class="muted">Сегодня</span> ${repsLabel(Object.assign({ ex: it.ex }, it.plan))}${pt.w ? ` · <b class="${pr.kind === 'up' ? 'acc' : ''}">${pt.w}</b>` : ''}${modeNote(it.ex)}</div>
       ${pt.hint ? `<div class="prog ${pr.kind}">${esc(pt.hint)}</div>` : ''}
       ${prev ? `<div><span class="muted">В прошлый раз</span> ${workSets(prev.it).map(s => setText(e, s)).join(', ')}</div>` : ''}
       ${prev && prev.it.note ? `<div class="wo-note">${esc(prev.it.note)}</div>` : ''}</div>`;
@@ -99,7 +100,8 @@ function vWorkout() {
   if (it.sets.length) h += `<div class="sets">${it.sets.map((s, i) => `<button class="setchip" data-a="wo-set" data-i="${i}"><b>${i + 1}</b>${setText(e, s)}</button>`).join('')}</div>`;
 
   // Ввод подхода
-  const kgLabel = e.type === 'assist' ? 'Помощь' : e.equip === 'dumbbell' ? 'Кг (1 гант.)' : 'Кг';
+  const md = modeOf(it.ex);
+  const kgLabel = e.type === 'assist' ? 'Помощь' : md === 'each' ? (e.equip === 'dumbbell' ? 'Кг (1 гант.)' : 'Кг (сторона)') : e.equip === 'dumbbell' ? 'Кг (обе)' : 'Кг';
   const stepper = (f, label, val, mode) => `<div class="field line"><label>${label}</label><div class="stepper">
     <button class="ibtn" data-a="wo-dec" data-f="${f}">−</button><input class="inp num" id="e-${f}" inputmode="${mode}" value="${val != null ? fmt(val) : ''}">
     <button class="ibtn" data-a="wo-inc" data-f="${f}">+</button></div></div>`;
@@ -112,9 +114,9 @@ function vWorkout() {
   }
   else {
     h += e.type === 'bw' ? stepper('reps', 'Повторы', entry.reps, 'numeric')
-      : stepper('kg', kgLabel, entry.kg, 'decimal') + stepper('reps', 'Повторы', entry.reps, 'numeric');
+      : stepper('kg', kgLabel, entry.kg, 'decimal') + (e.type === 'w' ? `<div class="wmode"><button class="chip${md === 'total' ? ' on' : ''}" data-a="wo-wmode" data-v="total">${e.equip === 'dumbbell' ? 'Обе вместе' : 'Общий вес'}</button><button class="chip${md === 'each' ? ' on' : ''}" data-a="wo-wmode" data-v="each">${e.equip === 'dumbbell' ? 'Одна гантель' : 'На каждую сторону'}</button></div>` : '') + stepper('reps', 'Повторы', entry.reps, 'numeric');
   }
-  if (e.equip === 'barbell' && entry.kg) h += `<p class="note" style="margin:-6px 0 10px">${plates(entry.kg)}</p>`;
+  if (e.equip === 'barbell' && md === 'total' && entry.kg) h += `<p class="note" style="margin:-6px 0 10px">${plates(entry.kg)}</p>`;
   h += `<div class="row2"><button class="btn" data-a="wo-like" ${prev ? '' : 'disabled'}>Как в прошлый раз</button>
       <button class="btn main" data-a="wo-log">Записать</button></div></div>
     <textarea class="inp note-inp" id="n-text" rows="2" maxlength="300" placeholder="Комментарий: сиденье на 4, хват уже… Покажется в следующий раз">${esc(it.note || '')}</textarea>
@@ -237,7 +239,7 @@ function logSet(fromHold) {
   else {
     if (!entry.reps) return toast('Впиши повторы');
     s.reps = Math.round(entry.reps);
-    if (e.type !== 'bw') { if (entry.kg == null) return toast(e.type === 'assist' ? 'Впиши помощь' : 'Впиши вес'); s.kg = entry.kg; }
+    if (e.type !== 'bw') { if (entry.kg == null) return toast(e.type === 'assist' ? 'Впиши помощь' : 'Впиши вес'); s.kg = entry.kg; if (e.type === 'w') s.wm = modeOf(it.ex); }
   }
   it.sets.push(s);
   const more = workSets(it).length < it.plan.sets || w.cur < w.items.length - 1;
@@ -250,7 +252,7 @@ function logSet(fromHold) {
 // ───── Итог ─────
 function tonnage(w) {
   let t = 0;
-  for (const it of w.items) { const e = EX[it.ex]; if (e.type === 'w') for (const s of workSets(it)) t += (s.kg || 0) * s.reps * (e.equip === 'dumbbell' ? 2 : 1); }
+  for (const it of w.items) { const e = EX[it.ex]; if (e.type === 'w') for (const s of workSets(it)) t += (s.kg || 0) * s.reps * (setMode(s, it.ex) === 'each' ? 2 : 1); }
   return Math.round(t);
 }
 // Рекорды: лучше всех прошлых тренировок (по расчётному 1ПМ; в гравитроне — меньше помощь; на время — дольше)
@@ -258,7 +260,7 @@ function findRecords(w) {
   const out = [];
   for (const it of w.items) {
     const e = EX[it.ex], sets = workSets(it); if (!sets.length) continue;
-    const prior = exHistory(it.ex).flatMap(h => workSets(h.it)); // текущая ещё не в истории
+    const prior = exHistory(it.ex).filter(h => sameMode(h, it.ex)).flatMap(h => workSets(h.it)); // текущая ещё не в истории
     if (!prior.length) continue;
     let best, old, txt;
     if (e.type === 'w') { const f = s => e1rm(s.kg || 0, s.reps); best = sets.reduce((a, b) => f(b) > f(a) ? b : a); old = Math.max(...prior.map(f)); if (f(best) > old + 0.01) txt = setText(e, best); }
@@ -389,6 +391,11 @@ document.addEventListener('click', async ev => {
     case 'wo-hold-stop': {
       if (!hold) return; const done = Math.max(1, Math.round((Date.now() - hold.start) / 1000));
       hold = null; entry.sec = done; logSet(true); toast(`Записал ${done} с`); break;
+    }
+    case 'wo-wmode': {
+      readEntry(); const it = curItem(); D.settings.wmode = Object.assign({}, D.settings.wmode, { [it.ex]: ds.v }); await saveKV('settings');
+      if (!it.sets.length) { entry.kg = null; entry = null; }   // прошлые подходы считались иначе — подсказку по весу начинаем заново
+      render(); break;
     }
     case 'wo-like': {
       const it = curItem(), prev = lastSession(it.ex); if (!prev) return;
