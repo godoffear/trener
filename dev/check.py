@@ -134,6 +134,13 @@ async def sync(b):
     ok(cfg.get('last') == 1 and 'err' not in cfg, 'настройки Рациона не тронуты')
     await pg.click('.sheet-x'); await pg.click('[data-a="tab"][data-k="more"]')
     ok('Отправлено' in await pg.inner_text('#app'), '«Ещё»: «Копия в GitHub — отправлено …»')
+    # звук отдыха: 10 звуков, выбор и громкость запоминаются, писк выключается
+    ok(await pg.evaluate("document.querySelectorAll('ul.snd>li').length===10"), '«Звук отдыха»: 10 звуков в списке')
+    await pg.click('[data-a="snd-pick"][data-id="marimba"]'); await pg.click('[data-a="snd-vol"][data-v="3"]'); await pg.click('[data-a="snd-pips"]')
+    st = await pg.evaluate("JSON.stringify([D.settings.sound,D.settings.soundVol,D.settings.pips])")
+    ok(st == '["marimba",3,false]', f'выбор звука, громкость и писк сохранились: {st}')
+    err = await pg.evaluate("(()=>{try{for(const s of SOUNDS)playSound(s.id);playAlarmSound();playPip();return ''}catch(e){return String(e)}})()")
+    ok(err == '', f'все звуки проигрываются без ошибок {err}')
     if errs: print('Ошибки JS:', errs)
     await ctx.close()
 

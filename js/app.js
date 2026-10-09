@@ -1,6 +1,6 @@
 // Тренер — экраны и навигация. Ванильный JS без зависимостей.
 // Отрисовка: функции v*() возвращают HTML-строку, клики ловит один обработчик по data-a.
-const APP_VERSION = '0.14';
+const APP_VERSION = '0.15';
 
 // ───── Даты ─────
 const pad = n => String(n).padStart(2, '0');
@@ -334,9 +334,20 @@ function vMore() {
       <p class="muted small" style="margin:0 0 12px">Все данные одним файлом. Сохрани в Google Диск или Telegram — восстановишь на любом телефоне.</p>
       <div class="row2"><button class="btn" data-a="export">Скачать</button><button class="btn" data-a="import">Загрузить</button></div>
       <input type="file" id="importfile" accept="application/json,.json" hidden></div>
+    ${soundCard()}
     ${ghCard()}
     <button class="btn ghost danger" data-a="progreset">Вернуть программу по умолчанию</button>
     <p class="muted small" style="text-align:center;margin-top:16px">Тренер ${APP_VERSION} · фото упражнений — free-exercise-db (public domain)</p>`;
+}
+
+// Звук конца отдыха и таймера планки: 10 на выбор, ▶ — послушать
+function soundCard() {
+  const cur = soundId(), vol = [1, 2, 3].includes(D.settings.soundVol) ? D.settings.soundVol : 2;
+  return `<div class="card"><h2 style="margin-bottom:4px">Звук отдыха</h2>
+    <p class="muted small" style="margin:0 0 10px">Играет, когда закончился отдых между подходами и когда отсчитал таймер планки.</p>
+    <div class="chips" style="margin-bottom:10px">${[['Тихо', 1], ['Средне', 2], ['Громко', 3]].map(([t, v]) => `<button class="chip${vol === v ? ' on' : ''}" data-a="snd-vol" data-v="${v}">${t}</button>`).join('')}</div>
+    <ul class="snd">${SOUNDS.map(s => `<li class="${s.id === cur ? 'on' : ''}"><button class="snd-pick" data-a="snd-pick" data-id="${s.id}"><i></i>${esc(s.name)}</button><button class="ibtn" data-a="snd-play" data-id="${s.id}" aria-label="Послушать">▶</button></li>`).join('')}</ul>
+    <label class="snd-pips"><input type="checkbox" data-a="snd-pips" ${D.settings.pips !== false ? 'checked' : ''}> Тихий писк за 3, 2, 1 секунды до конца отдыха</label></div>`;
 }
 
 function showUpdate() {
@@ -465,12 +476,16 @@ document.addEventListener('click', async ev => {
       if (ghOn()) ghPush().then(ok => { toast(ok ? 'Файл скачан и отправлен в GitHub' : 'Файл скачан, в GitHub не ушло: ' + ghSt().err); if (tab === 'more') render(); });
       break;
     }
+    case 'snd-play': playSound(ds.id); break;
+    case 'snd-pick': D.settings.sound = ds.id; await saveKV('settings'); playSound(ds.id); render(); break;
+    case 'snd-vol': D.settings.soundVol = +ds.v; await saveKV('settings'); playSound(soundId()); render(); break;
     case 'ghnow': toast('Отправляю…'); ghPush().then(ok => { toast(ok ? 'Отправлено в GitHub' : 'Не ушло: ' + ghSt().err); render(); }); break;
     case 'import': $('#importfile').click(); break;
   }
 });
 document.addEventListener('change', async ev => {
   const el = ev.target;
+  if (el.dataset.a === 'snd-pips') { D.settings.pips = el.checked; await saveKV('settings'); }
   if (el.dataset.a === 'sched') { D.program.week[el.dataset.wd] = el.value; await saveProgram(); render(); }
   if (el.id === 'importfile' && el.files[0]) {
     try {

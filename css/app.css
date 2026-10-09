@@ -272,3 +272,14 @@ details.photos .pics.small{margin-bottom:6px}
 .prog{font-size:13px;color:var(--muted);margin:2px 0 4px}
 .prog.up{color:var(--acc);font-weight:700}
 .prog.down{color:var(--warn)}
+
+/* 0.15: выбор звука отдыха */
+ul.snd{list-style:none;margin:0 0 10px;padding:0}
+ul.snd>li{display:flex;align-items:center;gap:8px;border-top:1px solid var(--line)}
+ul.snd>li:first-child{border-top:0}
+.snd-pick{flex:1;min-width:0;display:flex;align-items:center;gap:12px;min-height:52px;border:0;background:none;color:var(--text);font-weight:600;text-align:left;font-size:15px}
+.snd-pick i{flex:none;width:20px;height:20px;border-radius:50%;border:2px solid var(--line)}
+ul.snd>li.on .snd-pick i{border-color:var(--acc);background:radial-gradient(var(--acc) 45%,transparent 50%)}
+ul.snd>li.on .snd-pick{color:var(--acc)}
+.snd-pips{display:flex;align-items:center;gap:10px;font-size:14px;color:var(--muted);min-height:44px}
+.snd-pips input{width:22px;height:22px;accent-color:var(--acc)}

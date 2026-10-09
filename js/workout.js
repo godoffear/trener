@@ -1,7 +1,7 @@
 // Экран тренировки: по одному упражнению на экран, подходы, таймер отдыха, голос, итог.
 // Незавершённая тренировка лежит в D.active (store kv) и сохраняется после каждого действия —
 // закрыл приложение посреди тренировки, открыл — продолжаешь с того же места.
-let entry = null, restTimer = 0, wakeLock = null, audioCtx = null, checkSt = null;
+let entry = null, restTimer = 0, wakeLock = null, checkSt = null;
 const saveActive = () => saveKV('active');
 let noteT = 0;
 const curItem = () => D.active.items[D.active.cur];
@@ -197,22 +197,12 @@ function tick() {
   }
   if (!w.restUntil && !autoNext && !hold) clearInterval(restTimer);
 }
-// Конец отдыха: громкий трёхтональный сигнал (квадратная волна — слышно сквозь музыку), длинная вибрация
-// и системное уведомление — его звук Android проигрывает поверх музыки, даже в наушниках.
-function tone(t, f, d, vol) {
-  const o = audioCtx.createOscillator(), g = audioCtx.createGain();
-  o.type = 'square'; o.frequency.value = f;
-  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.01); g.gain.setValueAtTime(vol, t + d - 0.03); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
-  o.connect(g); g.connect(audioCtx.destination); o.start(t); o.stop(t + d + 0.02);
-}
-function pip() { if (!audioCtx) return; audioCtx.resume && audioCtx.resume(); tone(audioCtx.currentTime, 1200, 0.09, 0.35); }
+// Конец отдыха и конец таймера планки: выбранный звук (js/sounds.js), вибрация и системное уведомление —
+// его звук Android проигрывает поверх музыки, даже в наушниках. Громкость и выбор звука — «Ещё» → «Звук отдыха».
+function pip() { playPip(); }
 function alarm(text) {
-  if (navigator.vibrate) navigator.vibrate([600, 150, 600, 150, 900]);
-  if (audioCtx) {
-    audioCtx.resume && audioCtx.resume();
-    const t = audioCtx.currentTime;
-    for (let r = 0; r < 3; r++) [988, 1319, 1760].forEach((f, k) => tone(t + r * 0.75 + k * 0.17, f, 0.15, 0.6));
-  }
+  if (navigator.vibrate) navigator.vibrate([300, 120, 300]);
+  playAlarmSound();
   notify(text || 'Отдых закончился — следующий подход');
 }
 async function notify(text) {
@@ -366,7 +356,7 @@ document.addEventListener('click', async ev => {
   const el = ev.target.closest('[data-a]'); if (!el) return;
   const a = el.dataset.a, ds = el.dataset;
   if (!/^(wo-|ck$|dz$|dl$|sheetclose$)/.test(a)) return;
-  if (!audioCtx && window.AudioContext) try { audioCtx = new AudioContext(); } catch (e) {}
+  ensureAudio();
   const w = D.active;
   if (a !== 'wo-resume' && a !== 'wo-finish-paused' && a !== 'wo-finish') touch();
   switch (a) {
