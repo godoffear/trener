@@ -248,15 +248,44 @@ async def flow(b):
     # переезд старой программы → v4 (≈ час), дни недели сохраняются
     await pg.evaluate("(async()=>{const p=defaultProgram();p.v=3;p.week[3]='A';p.days.A.items.push({ex:'crunch_m',sets:3,lo:10,hi:15,rest:60});await dbPut('kv',{id:'program',val:p})})()")
     await pg.reload(); await pg.wait_for_timeout(500)
-    ok(await pg.evaluate("D.program.v===5 && !JSON.stringify(D.program).includes('crunch_m') && D.program.week[3]==='A' && Object.values(D.program.days).every(d=>dayMinutes(d)<=62)"), 'старая программа → новая (≈ час), дни недели сохранены')
+    ok(await pg.evaluate("D.program.v===6 && !JSON.stringify(D.program).includes('crunch_m') && D.program.week[3]==='A' && Object.values(D.program.days).every(d=>dayMinutes(d)<=62)"), 'старая программа → новая (≈ час), дни недели сохранены')
     # прогрессия: после тренировки с 20×10 во всех подходах «пора прибавить» → 22,5, поле веса уже заполнено
     prog = await pg.evaluate("""(()=>{D.workouts=[{id:'p1',date:'2026-10-05',day:'A',done:true,items:[{ex:'bench',plan:{sets:4,lo:6,hi:10},sets:[20,20,20,20].map(k=>({kg:k,reps:10}))}]}];
       const it=D.program.days.A.items[0]; const r=progOf('bench',it,false); D.workouts=[]; return r.kind==='up'&&r.kg===22.5})()""")
     ok(prog, 'прогрессия: 20×10 во всех подходах → «пора прибавить» 22,5 кг')
-    neg = await pg.evaluate("""(()=>{const mk=ks=>({id:'g'+ks,date:'2026-10-01',day:'B',done:true,items:[{ex:'gravitron',plan:{sets:3,lo:6,hi:10},sets:ks.map(k=>({kg:k,reps:8}))}]});
-      D.workouts=[mk([20,20,20])]; const a=dayItems('B').some(x=>x.ex==='grav_neg');
-      D.workouts=[mk([30,20,20])]; const b=dayItems('B').some(x=>x.ex==='grav_neg'); D.workouts=[]; return a&&!b})()""")
-    ok(neg, 'негативы в гравитроне — только когда во всех подходах помощь < 30% веса')
+    # программа v6: состав дней, суперсеты, без grav_neg / face_pull / plank
+    ok(await pg.evaluate("""(()=>{const P=defaultProgram(), ex=d=>P.days[d].items.map(x=>x.ex).join();
+      return ex('A')==='bench,calf,incl_db,sh_press,fly,lat_raise,pushdown' && P.days.A.items[1].ss===true
+        && ex('B')==='gravitron,row,lat_pd,rear_fly,curl,rev_crunch' && ex('C')==='leg_press,leg_curl,leg_ext,hyper,calf,rev_crunch'
+        && ex('D')==='leg_press,chest_press,gravitron,row,lat_raise,curl,rope_ovh' && P.days.D.items[6].ss===true
+        && P.days.B.items[4].sets===4 && P.week[1]==='A' && P.week[2]==='B' && P.week[4]==='C' && P.week[5]==='D'})()"""), 'программа v6: дни A–D по решению Андрея, суперсеты calf и rope_ovh')
+    # дополнительные подходы гравитрона в конце тренировки: вне плана, без «осталось», не влияют на прогрессию
+    await pg.evaluate("window.confirm=()=>true; startWorkout('B'); D.active.cur=D.active.items.length-1; entry=null; render()"); await pg.wait_for_timeout(200)
+    ok(await pg.query_selector('[data-a="wo-extra"]'), 'на последнем экране есть «+ Гравитрон — дополнительные подходы»')
+    await pg.click('[data-a="wo-extra"]'); await pg.wait_for_timeout(200)
+    ok('Дополнительный подход 1' in await pg.inner_text('.entry'), 'доп. подход: подпись «Дополнительный подход 1»')
+    await pg.fill('#e-kg', '30'); await pg.fill('#e-reps', '6'); await pg.click('[data-a="wo-log"]'); await pg.wait_for_timeout(200)
+    await pg.evaluate("D.active.items[0].sets=[{kg:35,reps:10,t:Date.now()}]; saveActive()")
+    await pg.click('[data-a="wo-finish"]'); await pg.wait_for_timeout(400)
+    ex_ok = await pg.evaluate("""(()=>{const w=D.workouts[D.workouts.length-1]; const x=w.items.find(i=>i.extra);
+      return !!x && x.ex==='gravitron' && x.sets.length===1 && exHistory('gravitron').every(h=>!h.it.extra) && exHistory('gravitron').length===1})()""")
+    ok(ex_ok, 'доп. подходы сохранены как extra и не попадают в историю прогрессии')
+    await pg.click('[data-a="sheetclose"]'); await pg.evaluate("D.workouts=[]; D.active=null; saveActive()")
+    # суперсет: кнопка перехода к паре и таймер отдыха основного не сбрасывается
+    await pg.evaluate("startWorkout('A'); render()"); await pg.wait_for_timeout(200)
+    ok('Суперсет' in await pg.inner_text('.wo'), 'суперсет: на жиме есть кнопка к «Подъёму на носки»')
+    await pg.fill('#e-kg', '20'); await pg.fill('#e-reps', '8'); await pg.click('[data-a="wo-log"]')
+    r0 = await pg.evaluate("D.active.restUntil")
+    await pg.click('[data-a="wo-go"][data-i="1"]'); await pg.fill('#e-kg', '40'); await pg.fill('#e-reps', '12'); await pg.click('[data-a="wo-log"]')
+    ok(await pg.evaluate(f"D.active.restUntil==={r0}"), 'подход суперсета не сбрасывает отдых основного упражнения')
+    await pg.evaluate("D.active=null; saveActive()")
+    # повторная замена подряд → предложение закрепить в программе
+    await pg.evaluate("""D.workouts=[{id:'pw',date:'2026-10-01',day:'B',done:true,items:[{ex:'db_row',orig:'row',plan:{sets:3,lo:8,hi:12},sets:[{kg:20,reps:10}]}]}]; startWorkout('B'); D.active.cur=1; entry=null; render()""")
+    await pg.click('[data-a="wo-swap"]'); await pg.click('[data-a="wo-swap-view"]'); await pg.click('.sheet [data-a="wo-swap-to"]'); await pg.wait_for_timeout(300)
+    ok(await pg.query_selector('.sheet [data-a="wo-pin"]'), 'второй раз подряд заменили — предлагает закрепить')
+    await pg.click('[data-a="wo-pin"]'); await pg.wait_for_timeout(200)
+    ok(await pg.evaluate("D.program.days.B.items[1].ex!=='row' && !D.active.items[1].orig && D.program.days.D.items[3].ex==='row'"), 'закрепил замену только в этом дне')
+    await pg.evaluate("D.workouts=[]; D.active=null; D.program=defaultProgram(); saveActive(); saveKV('program')")
     wm = await pg.evaluate("""(()=>{const r={}; D.settings.wmode={};
       D.workouts=[{id:'m1',date:'2026-10-01',day:'D',done:true,items:[{ex:'chest_press',plan:{sets:3,lo:8,hi:12},sets:[60,60,60].map(k=>({kg:k,reps:12,wm:'total'}))}]}];
       const it=D.program.days.D.items.find(x=>x.ex==='chest_press');

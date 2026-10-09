@@ -1,6 +1,6 @@
 // Тренер — экраны и навигация. Ванильный JS без зависимостей.
 // Отрисовка: функции v*() возвращают HTML-строку, клики ловит один обработчик по data-a.
-const APP_VERSION = '0.16';
+const APP_VERSION = '0.17';
 
 // ───── Даты ─────
 const pad = n => String(n).padStart(2, '0');
@@ -34,7 +34,7 @@ const isTrain = p => !!D.program.days[p];
 // Подходы упражнения по всем завершённым тренировкам: [{date, it:{ex,sets,…}}], новые в конце.
 function exHistory(ex) {
   const out = [];
-  for (const w of D.workouts) if (w.done) for (const it of w.items) if (it.ex === ex && it.sets && it.sets.some(s => !s.warm)) out.push({ date: w.date, it, light: w.light });
+  for (const w of D.workouts) if (w.done) for (const it of w.items) if (it.ex === ex && !it.extra && it.sets && it.sets.some(s => !s.warm)) out.push({ date: w.date, it, light: w.light });
   return out;
 }
 // Подсказка по весу на сегодня — js/progression.js (двойная прогрессия по повторам)
@@ -247,7 +247,7 @@ function vProgram() {
     h += '<ul class="exl">';
     day.items.forEach((x, i) => {
       const act = progEdit ? `data-a="edit" data-d="${id}" data-i="${i}"` : `data-a="tech" data-ex="${x.ex}"`;
-      h += `<li class="tap" ${act}><div class="n"><b>${esc(EX[x.ex].name)}</b><span>${repsLabel(x)}${x.pull === 'neg' ? ' · появятся, когда помощь < 30% веса' : ''}</span></div>${progEdit ? '<div class="w muted">›</div>' : ''}</li>`;
+      h += `<li class="tap" ${act}><div class="n"><b>${esc(EX[x.ex].name)}</b><span>${repsLabel(x)}${x.pull === 'neg' ? ' · появятся, когда помощь < 30% веса' : ''}${x.ss ? ' · суперсет, в паузах предыдущего' : ''}</span></div>${progEdit ? '<div class="w muted">›</div>' : ''}</li>`;
     });
     h += '</ul>';
     if (progEdit) h += `<button class="btn ghost" data-a="add" data-d="${id}">+ Упражнение</button>`;

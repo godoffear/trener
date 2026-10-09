@@ -39,7 +39,7 @@ function sheetCheck(dayId) {
 function startWorkout(dayId, light) {
   const items = dayItems(dayId).map(x => ({
     ex: x.ex, plan: { sets: light ? Math.max(1, x.sets - 1) : x.sets, lo: x.lo, hi: x.hi, rest: x.rest, step: x.step },
-    sets: [], warm: false, note: '', disc: [],
+    sets: [], warm: false, note: '', disc: [], ss: !!x.ss,
   }));
   D.active = { id: uid(), date: dk(new Date()), day: dayId, start: Date.now(), check: checkSt ? { sleep: checkSt.sleep, energy: checkSt.energy, sore: checkSt.sore } : null,
     light: !!light, cur: 0, items, restUntil: 0 };
@@ -80,7 +80,7 @@ function vWorkout() {
     <div class="wo-title"><b class="num">${w.cur + 1} / ${n}</b><span>${esc(day ? day.name : '')}${w.light ? ' · облегчённо' : ''}</span></div>
     <div class="wo-clock num" id="wo-clock" aria-label="Время тренировки">${clockText()}</div>
     <button class="btn small-btn" data-a="wo-finish">Завершить</button></div>
-    <div class="wo-dots">${w.items.map((x, i) => `<button data-a="wo-go" data-i="${i}" class="${i === w.cur ? 'on' : ''}${workSets(x).length >= x.plan.sets ? ' done' : ''}" aria-label="Упражнение ${i + 1}">${i + 1}</button>`).join('')}</div>`;
+    <div class="wo-dots">${w.items.map((x, i) => `<button data-a="wo-go" data-i="${i}" class="${i === w.cur ? 'on' : ''}${(x.extra ? workSets(x).length : workSets(x).length >= x.plan.sets) ? ' done' : ''}" aria-label="Упражнение ${i + 1}">${i + 1}</button>`).join('')}</div>`;
 
   h += `<div class="card wo">
     ${w.cur === 0 ? `<p class="quote">${esc(quoteFor(new Date()))}</p>` : ''}
@@ -93,6 +93,9 @@ function vWorkout() {
       ${prev && prev.it.note ? `<div class="wo-note">${esc(prev.it.note)}</div>` : ''}</div>`;
   if (!prev && (e.type === 'w' || e.type === 'assist'))
     h += `<p class="hint">Подбери ${e.type === 'assist' ? 'помощь' : 'вес'}, с которым сделаешь нужное число повторов и останется 2–3 в запасе. Начни с лёгкого и добавляй от подхода к подходу.</p>`;
+  if (!e.base && (e.type === 'w' || e.type === 'bw') && !it.extra && need > 0 && done === need - 1)
+    h += `<div class="prog same">Последний подход — почти до отказа</div>`;
+  if (it.ss && w.cur > 0) h += `<div class="hint">Суперсет: делай в паузах «${esc(EX[w.items[w.cur - 1].ex].name)}».</div>`;
   if (it.disc.length) h += `<div class="warnbox">Дискомфорт: ${esc(it.disc.map(d => `${d.zone} ${d.lvl}/5`).join(', '))}. Прибавки не будет.</div>`;
   if (e.base && e.type === 'w')
     h += it.warm ? `<button class="warm on" data-a="wo-warm">✓ разминка</button>`
@@ -105,7 +108,7 @@ function vWorkout() {
   const stepper = (f, label, val, mode) => `<div class="field line"><label>${label}</label><div class="stepper">
     <button class="ibtn" data-a="wo-dec" data-f="${f}">−</button><input class="inp num" id="e-${f}" inputmode="${mode}" value="${val != null ? fmt(val) : ''}">
     <button class="ibtn" data-a="wo-inc" data-f="${f}">+</button></div></div>`;
-  h += `<div class="entry"><div class="muted small">Подход ${done + 1} из ${need}${done >= need ? ' · сверх плана' : ''}</div>`;
+  h += `<div class="entry"><div class="muted small">${it.extra ? `Дополнительный подход ${done + 1} · по желанию` : `Подход ${done + 1} из ${need}${done >= need ? ' · сверх плана' : ''}`}</div>`;
   if (e.type === 'time') {
     h += stepper('sec', 'Цель, секунд', entry.sec, 'numeric');
     h += hold ? `<div class="hold"><b class="num" id="hold-t">${Math.ceil((hold.start + hold.target * 1000 - Date.now()) / 1000)}</b><span>из ${hold.target} с</span>
@@ -120,10 +123,13 @@ function vWorkout() {
   h += `<div class="row2"><button class="btn" data-a="wo-like" ${prev ? '' : 'disabled'}>Как в прошлый раз</button>
       <button class="btn main" data-a="wo-log">Записать</button></div></div>
     <textarea class="inp note-inp" id="n-text" rows="2" maxlength="300" placeholder="Комментарий: сиденье на 4, хват уже… Покажется в следующий раз">${esc(it.note || '')}</textarea>
+    ${it.ss && w.cur > 0 ? `<button class="btn ghost" data-a="wo-go" data-i="${w.cur - 1}">‹ К «${esc(EX[w.items[w.cur - 1].ex].name)}»</button>` : ''}
+    ${w.items[w.cur + 1] && w.items[w.cur + 1].ss ? `<button class="btn ghost" data-a="wo-go" data-i="${w.cur + 1}">Суперсет: ${esc(EX[w.items[w.cur + 1].ex].name)} ›</button>` : ''}
     <div class="wo-tools"><button class="btn ghost" data-a="wo-swap">Заменить</button><button class="btn ghost" data-a="wo-disc">Дискомфорт</button></div>`;
   const last = w.cur === n - 1;
   if (autoNext && autoNext.from === w.cur)
     h += `<div class="auto-next"><span>Следующее упражнение через <b id="auto-t">${Math.ceil((autoNext.until - Date.now()) / 1000)}</b> с</span><button class="btn" data-a="wo-stay">Остаться</button></div>`;
+  if (last && !it.extra) h += `<button class="btn ghost" style="margin-top:8px" data-a="wo-extra">+ Гравитрон — дополнительные подходы (по желанию)</button>`;
   h += `<button class="btn ${done >= need ? 'main' : 'ghost'}" style="margin-top:8px" data-a="${last ? 'wo-finish' : 'wo-next'}">${last ? 'Завершить тренировку' : 'Следующее упражнение →'}</button></div>
     <button class="btn ghost danger" style="margin-top:4px" data-a="wo-cancel">Отменить без записи</button>`;
   if (w.restUntil > Date.now()) h += `<div class="rest" id="rest"><div><span class="muted small">Отдых</span><b class="num" id="rest-t">${mmss(w.restUntil - Date.now())}</b></div>
@@ -242,10 +248,10 @@ function logSet(fromHold) {
     if (e.type !== 'bw') { if (entry.kg == null) return toast(e.type === 'assist' ? 'Впиши помощь' : 'Впиши вес'); s.kg = entry.kg; if (e.type === 'w') s.wm = modeOf(it.ex); }
   }
   it.sets.push(s);
-  const more = workSets(it).length < it.plan.sets || w.cur < w.items.length - 1;
-  w.restUntil = more ? Date.now() + it.plan.rest * 1000 : 0; lastPip = 0;
+  const more = it.extra || workSets(it).length < it.plan.sets || w.cur < w.items.length - 1;
+  if (!it.ss) { w.restUntil = more ? Date.now() + it.plan.rest * 1000 : 0; lastPip = 0; }   // суперсет идёт в паузах основного — его таймер не трогаем
   // последний по плану подход — через 7 с сам переходим к следующему упражнению (отдых продолжается)
-  autoNext = workSets(it).length === it.plan.sets && w.cur < w.items.length - 1 ? { until: Date.now() + AUTO_NEXT_MS, from: w.cur } : null;
+  autoNext = !it.extra && workSets(it).length === it.plan.sets && w.cur < w.items.length - 1 ? { until: Date.now() + AUTO_NEXT_MS, from: w.cur } : null;
   saveActive(); render(); restLoop();
 }
 
@@ -283,7 +289,7 @@ async function finishWorkout() {
   const idleTail = Date.now() - lastAct(w) > IDLE_MS;
   const end = w.pauseAt || (idleTail ? lastAct(w) + 60000 : Date.now());
   const rec = { id: w.id, date: w.date, day: w.day, start: w.start, end, paused: w.paused || 0, check: w.check, light: w.light, done: true,
-    items: w.items.filter(it => it.sets.length || it.warm).map(it => ({ ex: it.ex, orig: it.orig || null, plan: it.plan, warm: it.warm, sets: it.sets, note: it.note, disc: it.disc })) };
+    items: w.items.filter(it => it.sets.length || it.warm).map(it => ({ ex: it.ex, orig: it.orig || null, plan: it.plan, warm: it.warm, sets: it.sets, note: it.note, disc: it.disc, extra: it.extra || undefined })) };
   rec.records = findRecords(rec);
   D.workouts.push(rec); await dbPut('workouts', rec);
   if (ghOn()) ghPush();  // копия в GitHub — сама после каждой тренировки
@@ -413,15 +419,33 @@ document.addEventListener('click', async ev => {
       saveActive(); entry = null; closeSheet(); render(); break;
     }
     case 'wo-set-del': curItem().sets.splice(+ds.i, 1); saveActive(); entry = null; closeSheet(); render(); break;
+    case 'wo-extra': {
+      readEntry();
+      w.items.push({ ex: 'gravitron', extra: true, plan: { sets: 0, lo: 6, hi: 10, rest: 90 }, sets: [], warm: false, note: '', disc: [], ss: false });
+      w.cur = w.items.length - 1; entry = null; saveActive(); render(); scrollTo(0, 0); break;
+    }
+    case 'wo-pin': {   // закрепить замену в программе — только в этом дне
+      const it = curItem(), from = ds.from;
+      for (const x of D.program.days[w.day].items) if (x.ex === from) { x.ex = it.ex; delete x.step; delete x.pull; }
+      await saveKV('program'); delete it.orig; saveActive(); closeSheet(); render(); toast('Закрепил в программе'); break;
+    }
     case 'wo-swap': sheetSwap(); break;
     case 'wo-swap-view': sheetSwapView(ds.ex); break;
     case 'wo-swap-to': {
       const it = curItem();
       if (it.sets.length && !confirm('Записанные подходы этого упражнения сбросятся. Заменить?')) return;
+      const was = it.orig || it.ex;
       it.orig = it.orig || it.ex; it.ex = ds.ex; it.sets = []; it.warm = false; delete it.plan.step;
       if (EX[ds.ex].type === 'time' && EX[it.orig].type !== 'time') { it.plan.lo = 30; it.plan.hi = 45; }
       if (EX[ds.ex].type !== 'time' && EX[it.orig].type === 'time') { it.plan.lo = 10; it.plan.hi = 15; }
-      entry = null; saveActive(); closeSheet(); render(); toast('Заменил на сегодня'); break;
+      entry = null; saveActive(); render();
+      const pw = D.workouts.filter(x => x.done && x.day === w.day).slice(-1)[0];
+      if (pw && pw.items.some(x => x.orig === was)) {   // в прошлый раз это упражнение тоже заменяли — предложим закрепить
+        openSheet(`<h2>Закрепить замену?</h2><p class="muted" style="margin:0 0 12px">«${esc(EX[was].name)}» ты заменяешь уже не первый раз подряд. Поставить в программу «${esc(EX[ds.ex].name)}» насовсем?</p>
+          <button class="btn main" data-a="wo-pin" data-from="${was}">Закрепить в программе</button>
+          <button class="btn ghost" style="margin-top:8px" data-a="sheetclose">Только на сегодня</button>`);
+      } else { closeSheet(); toast('Заменил на сегодня'); }   // окно «Закрепить» открываем поверх, не закрывая лист (иначе popstate закроет его)
+      break;
     }
     case 'wo-disc': discSt = null; sheetDisc(); break;
     case 'dz': discSt.zone = ds.v; sheetDisc(); break;
