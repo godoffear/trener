@@ -82,7 +82,9 @@ function vWorkout() {
     <button class="btn small-btn" data-a="wo-finish">Завершить</button></div>
     <div class="wo-dots">${w.items.map((x, i) => `<button data-a="wo-go" data-i="${i}" class="${i === w.cur ? 'on' : ''}${(x.extra ? workSets(x).length : workSets(x).length >= x.plan.sets) ? ' done' : ''}" aria-label="Упражнение ${i + 1}">${i + 1}</button>`).join('')}</div>`;
 
+  const sp = ssPair(w.cur);
   h += `<div class="card wo">
+    ${sp ? `<div class="ss-banner"><b>СУПЕРСЕТ</b><span>${esc(EX[w.items[sp.main].ex].name)} ⇄ ${esc(EX[w.items[sp.ss].ex].name)}</span></div>` : ''}
     ${w.cur === 0 ? `<p class="quote">${esc(quoteFor(new Date()))}</p>` : ''}
     <div class="wo-name" data-a="tech" data-ex="${it.ex}"><h2>${esc(e.name)}${it.orig ? ' <span class="tag">замена</span>' : ''}</h2><span class="muted small">Техника ›</span></div>
     ${photosHTML(e, true)}
@@ -95,7 +97,6 @@ function vWorkout() {
     h += `<p class="hint">Подбери ${e.type === 'assist' ? 'помощь' : 'вес'}, с которым сделаешь нужное число повторов и останется 2–3 в запасе. Начни с лёгкого и добавляй от подхода к подходу.</p>`;
   if (!e.base && (e.type === 'w' || e.type === 'bw') && !it.extra && need > 0 && done === need - 1)
     h += `<div class="prog same">Последний подход — почти до отказа</div>`;
-  if (it.ss && w.cur > 0) h += `<div class="hint">Суперсет: делай в паузах «${esc(EX[w.items[w.cur - 1].ex].name)}».</div>`;
   if (it.disc.length) h += `<div class="warnbox">Дискомфорт: ${esc(it.disc.map(d => `${d.zone} ${d.lvl}/5`).join(', '))}. Прибавки не будет.</div>`;
   if (e.base && e.type === 'w')
     h += it.warm ? `<button class="warm on" data-a="wo-warm">✓ разминка</button>`
@@ -127,7 +128,9 @@ function vWorkout() {
     ${w.items[w.cur + 1] && w.items[w.cur + 1].ss ? `<button class="btn ghost" data-a="wo-go" data-i="${w.cur + 1}">Суперсет: ${esc(EX[w.items[w.cur + 1].ex].name)} ›</button>` : ''}
     <div class="wo-tools"><button class="btn ghost" data-a="wo-swap">Заменить</button><button class="btn ghost" data-a="wo-disc">Дискомфорт</button></div>`;
   const last = w.cur === n - 1;
-  if (autoNext && autoNext.from === w.cur)
+  if (autoNext && autoNext.from === w.cur && autoNext.ss)
+    h += `<div class="auto-next ss"><span>Следом по суперсету: <b>${esc(EX[w.items[autoNext.to].ex].name)}</b></span><button class="btn" data-a="wo-stay">Остаться</button></div>`;
+  else if (autoNext && autoNext.from === w.cur)
     h += `<div class="auto-next"><span>Следующее упражнение через <b id="auto-t">${Math.ceil((autoNext.until - Date.now()) / 1000)}</b> с</span><button class="btn" data-a="wo-stay">Остаться</button></div>`;
   if (last && !it.extra) h += `<button class="btn ghost" style="margin-top:8px" data-a="wo-extra">+ Гравитрон — дополнительные подходы (по желанию)</button>`;
   h += `<button class="btn ${done >= need ? 'main' : 'ghost'}" style="margin-top:8px" data-a="${last ? 'wo-finish' : 'wo-next'}">${last ? 'Завершить тренировку' : 'Следующее упражнение →'}</button></div>
@@ -144,7 +147,15 @@ const mmss = ms => { const s = Math.max(0, Math.ceil(ms / 1000)); return `${Math
 // Когда приложение свёрнуто — таймер не крутится (меньше нагрев), при возврате запускается снова.
 let autoNext = null, lastPip = 0;
 let hold = null;      // { start, target } — идёт таймер упражнения на время (планка, вис)  // { until, from } — переход через 7 с после последнего подхода
-const AUTO_NEXT_MS = 7000;
+const AUTO_NEXT_MS = 7000, SS_SWITCH_MS = 2000;
+// Суперсет: основное упражнение i и следующий за ним пункт с ss. → { main, ss } или null
+function ssPair(i) {
+  const w = D.active, a = w.items[i]; if (!a) return null;
+  if (w.items[i + 1] && w.items[i + 1].ss && !a.ss) return { main: i, ss: i + 1 };
+  if (a.ss && i > 0) return { main: i - 1, ss: i };
+  return null;
+}
+let ssTimer = 0;
 // Часы всей тренировки в шапке: сколько прошло с «Начать тренировку». Обновляются раз в секунду, только на экране тренировки.
 let clockT = 0;
 // Чистое время тренировки: без пауз (простой > 10 мин)
@@ -177,6 +188,10 @@ function restLoop() {
   if (document.hidden || !D.active || (!D.active.restUntil && !autoNext && !hold)) return;
   restTimer = setInterval(tick, 1000);
 }
+function goAuto() {
+  const w = D.active, a = autoNext; autoNext = null; if (!w || !a) return;
+  w.cur = a.to != null ? a.to : w.cur + 1; saveActive(); entry = null; render(); scrollTo(0, 0);
+}
 function tick() {
   const w = D.active; if (!w) { autoNext = null; return clearInterval(restTimer); }
   const now = Date.now();
@@ -194,7 +209,7 @@ function tick() {
   if (autoNext) {
     const left = autoNext.until - now, el = $('#auto-t');
     if (autoNext.from !== w.cur || tab !== 'workout') autoNext = null;
-    else if (left <= 0) { autoNext = null; w.cur++; saveActive(); entry = null; render(); scrollTo(0, 0); }
+    else if (left <= 0) goAuto();
     else if (el) el.textContent = Math.ceil(left / 1000);
   }
   if (hold) {
@@ -251,7 +266,17 @@ function logSet(fromHold) {
   const more = it.extra || workSets(it).length < it.plan.sets || w.cur < w.items.length - 1;
   if (!it.ss) { w.restUntil = more ? Date.now() + it.plan.rest * 1000 : 0; lastPip = 0; }   // суперсет идёт в паузах основного — его таймер не трогаем
   // последний по плану подход — через 7 с сам переходим к следующему упражнению (отдых продолжается)
-  autoNext = !it.extra && workSets(it).length === it.plan.sets && w.cur < w.items.length - 1 ? { until: Date.now() + AUTO_NEXT_MS, from: w.cur } : null;
+  autoNext = null; clearTimeout(ssTimer);
+  const pr = ssPair(w.cur), left = x => workSets(x).length < x.plan.sets;
+  if (pr) {   // суперсет: чередуем, пока у второго упражнения пары остались подходы; потом — дальше по плану
+    const other = w.cur === pr.main ? pr.ss : pr.main;
+    if (left(w.items[other])) {
+      const a = autoNext = { until: Date.now() + SS_SWITCH_MS, from: w.cur, to: other, ss: true };
+      ssTimer = setTimeout(() => { if (autoNext === a && D.active && D.active.cur === a.from && tab === 'workout') goAuto(); }, SS_SWITCH_MS);
+    } else if (workSets(it).length >= it.plan.sets && pr.ss < w.items.length - 1)
+      autoNext = { until: Date.now() + AUTO_NEXT_MS, from: w.cur, to: pr.ss + 1 };
+  } else if (!it.extra && workSets(it).length === it.plan.sets && w.cur < w.items.length - 1)
+    autoNext = { until: Date.now() + AUTO_NEXT_MS, from: w.cur, to: w.cur + 1 };
   saveActive(); render(); restLoop();
 }
 
@@ -410,7 +435,7 @@ document.addEventListener('click', async ev => {
       render(); break;
     }
     case 'wo-rest-add': w.restUntil = Math.max(w.restUntil, Date.now()) + 30000; saveActive(); restLoop(); { const t = $('#rest-t'); if (t) t.textContent = mmss(w.restUntil - Date.now()); } break;
-    case 'wo-stay': autoNext = null; render(); break;
+    case 'wo-stay': autoNext = null; clearTimeout(ssTimer); render(); break;
     case 'wo-rest-skip': w.restUntil = 0; saveActive(); clearInterval(restTimer); render(); break;
     case 'wo-set': sheetSet(+ds.i); break;
     case 'wo-set-save': {

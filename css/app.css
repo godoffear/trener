@@ -287,3 +287,8 @@ ul.snd>li.on .snd-pick{color:var(--acc)}
 /* 0.16: как считается вес */
 .wmode{display:flex;gap:6px;margin:-4px 0 10px}
 .wmode .chip{flex:1;min-height:36px;font-size:12px;padding:4px 6px}
+
+.ss-banner{margin:0 0 10px;padding:10px 14px;border-radius:12px;background:var(--acc);color:var(--on-acc);display:flex;flex-direction:column;gap:2px}
+.ss-banner b{font-family:'Unbounded',sans-serif;font-size:22px;letter-spacing:.04em;line-height:1.1}
+.ss-banner span{font-size:14px;font-weight:700;overflow-wrap:anywhere}
+.auto-next.ss{background:var(--acc);color:var(--on-acc)}
