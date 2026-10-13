@@ -1,6 +1,6 @@
 // Тренер — экраны и навигация. Ванильный JS без зависимостей.
 // Отрисовка: функции v*() возвращают HTML-строку, клики ловит один обработчик по data-a.
-const APP_VERSION = '0.19';
+const APP_VERSION = '0.20';
 
 // ───── Даты ─────
 const pad = n => String(n).padStart(2, '0');
@@ -345,6 +345,7 @@ function vMore() {
     ${soundCard()}
     ${ghCard()}
     <button class="btn ghost danger" data-a="progreset">Вернуть программу по умолчанию</button>
+    <button class="btn" data-a="chkupd" style="margin-top:12px">Проверить обновление</button>
     <p class="muted small" style="text-align:center;margin-top:16px">Тренер ${APP_VERSION} · фото упражнений — free-exercise-db (public domain)</p>`;
 }
 
@@ -356,6 +357,16 @@ function soundCard() {
     <div class="chips" style="margin-bottom:10px">${[['Тихо', 1], ['Средне', 2], ['Громко', 3]].map(([t, v]) => `<button class="chip${vol === v ? ' on' : ''}" data-a="snd-vol" data-v="${v}">${t}</button>`).join('')}</div>
     <ul class="snd">${SOUNDS.map(s => `<li class="${s.id === cur ? 'on' : ''}"><button class="snd-pick" data-a="snd-pick" data-id="${s.id}"><i></i>${esc(s.name)}</button><button class="ibtn" data-a="snd-play" data-id="${s.id}" aria-label="Послушать">▶</button></li>`).join('')}</ul>
     <label class="snd-pips"><input type="checkbox" data-a="snd-pips" ${D.settings.pips !== false ? 'checked' : ''}> Тихий писк за 3, 2, 1 секунды до конца отдыха</label></div>`;
+}
+
+let swReg = null;
+// «Ещё» → «Проверить обновление»: спрашиваем сервер; если есть новая версия, service worker сам встанет и появится плашка «Обновить»
+async function checkUpdate() {
+  if (!swReg) return toast('Обновление работает только в установленном приложении');
+  toast('Проверяю…');
+  try { await swReg.update(); } catch (e) { return toast('Нет связи — попробуй позже'); }
+  await new Promise(r => setTimeout(r, 2500));
+  if (!$('.update')) toast(swReg.installing || swReg.waiting ? 'Нашёл новую версию, ставлю…' : 'Установлена последняя версия ' + APP_VERSION);
 }
 
 function showUpdate() {
@@ -416,6 +427,7 @@ document.addEventListener('click', async ev => {
     }
     case 'summary': { const w = D.workouts.find(x => x.id === ds.id); if (w) sheetSummary(w); break; }
     case 'update': location.reload(); break;
+    case 'chkupd': checkUpdate(); break;
     case 'weigh': {
       const v = num($('#wg').value), key = dk(new Date());
       if (!v || v < 35 || v > 250) { toast('Впиши вес в кг'); return; }
@@ -529,6 +541,7 @@ document.addEventListener('change', async ev => {
     let had = !!navigator.serviceWorker.controller;
     navigator.serviceWorker.addEventListener('controllerchange', () => { if (had) showUpdate(); had = true; });
     navigator.serviceWorker.register('sw.js').then(reg => {
+      swReg = reg;
       document.addEventListener('visibilitychange', () => { if (!document.hidden) reg.update().catch(() => {}); });
     }).catch(() => {});
   }

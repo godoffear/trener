@@ -257,6 +257,9 @@ async def flow(b):
     await pg.reload(); await pg.wait_for_timeout(500)
     ok(await pg.evaluate("D.program.v===7 && D.program.days.D.items.some(x=>x.ex==='crunch_m') && D.program.days.A.items[0].sets===5"), 'v6 → v7: скручивания добавлены в пятницу, правки программы сохранены')
     await pg.evaluate("D.program=defaultProgram(); saveKV('program')")
+    await pg.evaluate("tab='more'; render()")
+    ok(await pg.query_selector('[data-a="chkupd"]'), 'в «Ещё» есть «Проверить обновление»')
+    await pg.evaluate("tab='today'; render()")
     # программа v7: состав дней, суперсеты, без grav_neg / face_pull / plank
     ok(await pg.evaluate("""(()=>{const P=defaultProgram(), ex=d=>P.days[d].items.map(x=>x.ex).join();
       return ex('A')==='bench,calf,incl_db,sh_press,fly,lat_raise,pushdown' && P.days.A.items[1].ss===true
