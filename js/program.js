@@ -5,11 +5,12 @@
 const REST_BASE = 90, REST_ISO = 60, REST_HOLD = 45;  // 0.5: Андрею 2 мин много — база 90 с, изоляция 60 с
 const it = (ex, sets, lo, hi, extra) => Object.assign({ ex, sets, lo, hi, rest: EX[ex].base ? REST_BASE : REST_ISO }, extra || {});
 
+// v7 (0.19): в пятницу добавлены скручивания в тренажёре с блинами на рычаге (3×10–15).
 // v6 (0.17): решение Андрея — Пн A, Вт B, Чт C, Пт D; на рост мышц, каждая мышца 2 раза в неделю.
 // Турника нет: без виса и подъёма ног в висе; путь к подтягиванию — гравитрон Вт/Пт + «доп. подходы» в конце любой тренировки.
 // ss: true — суперсет: делается в паузах предыдущего упражнения, своего времени и своего отдыха не имеет.
 // pull: 'neg' — негативы в гравитроне (в программе v6 не стоят, код оставлен).
-const PROGRAM_V = 6;
+const PROGRAM_V = 7;
 function defaultProgram() {
   return {
     v: PROGRAM_V,
@@ -28,7 +29,7 @@ function defaultProgram() {
       ] },
       D: { name: 'Всё тело', items: [
         it('leg_press', 3, 10, 12), it('chest_press', 3, 8, 12), it('gravitron', 3, 6, 10), it('row', 3, 10, 12),
-        it('lat_raise', 3, 12, 15), it('curl', 3, 10, 15), it('rope_ovh', 3, 10, 15, { ss: true }),
+        it('lat_raise', 3, 12, 15), it('curl', 3, 10, 15), it('rope_ovh', 3, 10, 15, { ss: true }), it('crunch_m', 3, 10, 15),
       ] },
     },
     week: { 1: 'A', 2: 'B', 3: 'walk', 4: 'C', 5: 'D', 6: 'walk', 0: 'rest' },

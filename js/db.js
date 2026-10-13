@@ -51,6 +51,8 @@ async function dbLoad() {
   // 0.5: программа v2 (около часа, отдых 90/60 с) — заменяем старую, дни недели оставляем
   // v1–v5 → v6 (0.17): новая программа по решению Андрея (суперсеты, без grav_neg/face_pull/plank); дни недели остаются
   if ((D.program.v || 1) < 6) { const week = D.program.week; D.program = defaultProgram(); D.program.week = week; }
+  // v6 → v7 (0.19): программа не заменяется (правки Андрея остаются) — в пятницу добавляем скручивания в тренажёре
+  if (D.program.v === 6 && D.program.days.D && !D.program.days.D.items.some(x => x.ex === 'crunch_m')) D.program.days.D.items.push(defaultProgram().days.D.items.find(x => x.ex === 'crunch_m'));
   if (D.program.v !== PROGRAM_V) { D.program.v = PROGRAM_V; await dbPut('kv', { id: 'program', val: D.program }); }
   D.active = get('active') || null;
   D.insights = get('insights') || { weekly: [], plateaus: [] };

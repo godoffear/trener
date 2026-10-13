@@ -246,18 +246,22 @@ async def flow(b):
     n = await pg.evaluate("D.workouts.length + (D.active ? 1 : 0)")
     ok(n == 0 and await pg.query_selector('[data-a="start"]'), 'отменить без записи — в истории пусто')
     # переезд старой программы → v4 (≈ час), дни недели сохраняются
-    await pg.evaluate("(async()=>{const p=defaultProgram();p.v=3;p.week[3]='A';p.days.A.items.push({ex:'crunch_m',sets:3,lo:10,hi:15,rest:60});await dbPut('kv',{id:'program',val:p})})()")
+    await pg.evaluate("(async()=>{const p=defaultProgram();p.v=3;p.week[3]='A';p.days.A.items.push({ex:'crunch_x',sets:3,lo:10,hi:15,rest:60});await dbPut('kv',{id:'program',val:p})})()")
     await pg.reload(); await pg.wait_for_timeout(500)
-    ok(await pg.evaluate("D.program.v===6 && !JSON.stringify(D.program).includes('crunch_m') && D.program.week[3]==='A' && Object.values(D.program.days).every(d=>dayMinutes(d)<=62)"), 'старая программа → новая (≈ час), дни недели сохранены')
+    ok(await pg.evaluate("D.program.v===7 && !JSON.stringify(D.program).includes('crunch_x') && D.program.week[3]==='A' && Object.values(D.program.days).every(d=>dayMinutes(d)<=70)"), 'старая программа → новая (≈ час), дни недели сохранены')
     # прогрессия: после тренировки с 20×10 во всех подходах «пора прибавить» → 22,5, поле веса уже заполнено
     prog = await pg.evaluate("""(()=>{D.workouts=[{id:'p1',date:'2026-10-05',day:'A',done:true,items:[{ex:'bench',plan:{sets:4,lo:6,hi:10},sets:[20,20,20,20].map(k=>({kg:k,reps:10}))}]}];
       const it=D.program.days.A.items[0]; const r=progOf('bench',it,false); D.workouts=[]; return r.kind==='up'&&r.kg===22.5})()""")
     ok(prog, 'прогрессия: 20×10 во всех подходах → «пора прибавить» 22,5 кг')
-    # программа v6: состав дней, суперсеты, без grav_neg / face_pull / plank
+    await pg.evaluate("(async()=>{const p=defaultProgram();p.v=6;p.days.D.items.pop();p.days.A.items[0].sets=5;await dbPut('kv',{id:'program',val:p})})()")
+    await pg.reload(); await pg.wait_for_timeout(500)
+    ok(await pg.evaluate("D.program.v===7 && D.program.days.D.items.some(x=>x.ex==='crunch_m') && D.program.days.A.items[0].sets===5"), 'v6 → v7: скручивания добавлены в пятницу, правки программы сохранены')
+    await pg.evaluate("D.program=defaultProgram(); saveKV('program')")
+    # программа v7: состав дней, суперсеты, без grav_neg / face_pull / plank
     ok(await pg.evaluate("""(()=>{const P=defaultProgram(), ex=d=>P.days[d].items.map(x=>x.ex).join();
       return ex('A')==='bench,calf,incl_db,sh_press,fly,lat_raise,pushdown' && P.days.A.items[1].ss===true
         && ex('B')==='gravitron,row,lat_pd,rear_fly,curl,rev_crunch' && ex('C')==='leg_press,leg_curl,leg_ext,hyper,calf,rev_crunch'
-        && ex('D')==='leg_press,chest_press,gravitron,row,lat_raise,curl,rope_ovh' && P.days.D.items[6].ss===true
+        && ex('D')==='leg_press,chest_press,gravitron,row,lat_raise,curl,rope_ovh,crunch_m' && P.days.D.items[6].ss===true
         && P.days.B.items[4].sets===4 && P.week[1]==='A' && P.week[2]==='B' && P.week[4]==='C' && P.week[5]==='D'})()"""), 'программа v6: дни A–D по решению Андрея, суперсеты calf и rope_ovh')
     # дополнительные подходы гравитрона в конце тренировки: вне плана, без «осталось», не влияют на прогрессию
     await pg.evaluate("window.confirm=()=>true; startWorkout('B'); D.active.cur=D.active.items.length-1; entry=null; render()"); await pg.wait_for_timeout(200)
