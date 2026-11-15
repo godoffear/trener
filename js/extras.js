@@ -132,7 +132,7 @@ function hcCardHTML() {
   if (!D.settings) return '';
   const hasFeel = recentFeel(2).length === 2;
   if (!D.settings.hc && !hasFeel) return '';
-  if (D.settings.hc && HC.sleepMin == null && HC.rhr == null && !hasFeel) return `<div class="card"><b>Готовность</b><p class="muted small" style="margin:6px 0 0">Данных с часов пока нет. Открой Mi Fitness, чтобы он синхронизировался с Health Connect, и вернись сюда.</p></div>`;
+  if (D.settings.hc && HC.sleepMin == null && HC.rhr == null && !hasFeel) return '';
   const r = readiness(), hm = m => `${Math.floor(m / 60)} ч ${pad(m % 60)} мин`;
   return `<div class="card ready ${r.cls}"><div class="card-h" style="margin-bottom:6px"><b>Готовность</b><span class="tag">${r.t}</span></div>
     <div class="rd-row">${HC.sleepMin != null ? `<div><span class="muted small">Сон</span><b>${hm(HC.sleepMin)}</b></div>` : ''}${HC.rhr != null ? `<div><span class="muted small">Пульс покоя</span><b>${HC.rhr}${HC.rhrBase ? ` <i class="muted small">обычно ${HC.rhrBase}</i>` : ''}</b></div>` : ''}</div>
