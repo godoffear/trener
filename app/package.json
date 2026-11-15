@@ -1,0 +1,1 @@
+{"name":"trener-v2","version":"2.0.0","private":true,"dependencies":{"@capacitor-community/speech-recognition":"^7.0.1","@capacitor/android":"^8.5.3","@capacitor/browser":"^8.0.0","@capacitor/cli":"^8.5.3","@capacitor/core":"^8.5.3","@capacitor/filesystem":"^8.0.0","@capacitor/local-notifications":"^8.0.0","@capacitor/share":"^8.0.0","@capgo/capacitor-health":"^8.11.11"}}

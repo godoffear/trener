@@ -33,7 +33,8 @@ function sheetCheck(dayId) {
     ${low ? `<div class="warnbox">Похоже, ты не восстановился. Облегчённо — те же веса, на подход меньше, без прибавок.</div>
       <button class="btn main" data-a="wo-begin" data-light="1">Облегчённо</button>
       <button class="btn" style="margin-top:8px" data-a="wo-begin">Всё равно обычно</button>`
-    : `<button class="btn main" data-a="wo-begin">Поехали</button>`}`);
+    : `<button class="btn main" data-a="wo-begin">Поехали</button>`}
+    <button class="btn ghost" style="margin-top:8px" data-a="wo-begin">Пропустить опрос</button>`);
 }
 
 function startWorkout(dayId, light) {
@@ -85,23 +86,15 @@ function vWorkout() {
   const sp = ssPair(w.cur);
   h += `<div class="card wo">
     ${sp ? `<div class="ss-banner"><b>СУПЕРСЕТ</b><span>${esc(EX[w.items[sp.main].ex].name)} ⇄ ${esc(EX[w.items[sp.ss].ex].name)}</span></div>` : ''}
-    ${w.cur === 0 ? `<p class="quote">${esc(quoteFor(new Date()))}</p>` : ''}
-    <div class="wo-name" data-a="tech" data-ex="${it.ex}"><h2>${esc(e.name)}${it.orig ? ' <span class="tag">замена</span>' : ''}</h2><span class="muted small">Техника ›</span></div>
-    ${photosHTML(e, true)}
-    <div class="cue"><b>${esc(e.cue)}</b><span class="muted small">Темп: ${esc(e.tempo)}</span></div>
-    <div class="wo-info"><div><span class="muted">Сегодня</span> ${repsLabel(Object.assign({ ex: it.ex }, it.plan))}${pt.w ? ` · <b class="${pr.kind === 'up' ? 'acc' : ''}">${pt.w}</b>` : ''}${modeNote(it.ex)}</div>
-      ${pt.hint ? `<div class="prog ${pr.kind}">${esc(pt.hint)}</div>` : ''}
-      ${prev ? `<div><span class="muted">В прошлый раз</span> ${workSets(prev.it).map(s => setText(e, s)).join(', ')}</div>` : ''}
-      ${prev && prev.it.note ? `<div class="wo-note">${esc(prev.it.note)}</div>` : ''}</div>`;
-  if (!prev && (e.type === 'w' || e.type === 'assist'))
-    h += `<p class="hint">Подбери ${e.type === 'assist' ? 'помощь' : 'вес'}, с которым сделаешь нужное число повторов и останется 2–3 в запасе. Начни с лёгкого и добавляй от подхода к подходу.</p>`;
-  if (!e.base && (e.type === 'w' || e.type === 'bw') && !it.extra && need > 0 && done === need - 1)
-    h += `<div class="prog same">Последний подход — почти до отказа</div>`;
-  if (it.disc.length) h += `<div class="warnbox">Дискомфорт: ${esc(it.disc.map(d => `${d.zone} ${d.lvl}/5`).join(', '))}. Прибавки не будет.</div>`;
-  if (e.base && e.type === 'w')
-    h += it.warm ? `<button class="warm on" data-a="wo-warm">✓ разминка</button>`
-      : `<button class="warm" data-a="wo-warm"><i></i>Разминка: ${e.equip === 'barbell' ? 'пустой гриф' : 'лёгкий вес'} × 10–12</button>`;
-  if (it.sets.length) h += `<div class="sets">${it.sets.map((s, i) => `<button class="setchip" data-a="wo-set" data-i="${i}"><b>${i + 1}</b>${setText(e, s)}</button>`).join('')}</div>`;
+    <div class="wo-name"><h2>${esc(e.name)}${it.orig ? ' <span class="tag">замена</span>' : ''}</h2></div>
+    <div class="wo-target"><b>${repsLabel(Object.assign({ ex: it.ex }, it.plan))}</b>${pt.w ? `<span class="wt ${pr.kind === 'up' ? 'up' : ''}">${pt.w}</span>` : ''}${modeNote(it.ex)}</div>
+    ${prev ? `<div class="wo-prev">Прошлый раз: ${workSets(prev.it).map(s => setText(e, s)).join(' · ')}</div>` : (e.type === 'w' || e.type === 'assist') ? `<div class="wo-prev">Подбери ${e.type === 'assist' ? 'помощь' : 'вес'}: чтобы сделать повторы и остались 2–3 в запасе.</div>` : ''}
+    ${pt.hint ? `<div class="prog ${pr.kind}">${esc(pt.hint)}</div>` : ''}
+    ${prev && prev.it.note ? `<div class="wo-note">${esc(prev.it.note)}</div>` : ''}
+    ${it.disc.length ? `<div class="warnbox">Дискомфорт: ${esc(it.disc.map(d => `${d.zone} ${d.lvl}/5`).join(', '))}. Прибавки не будет.</div>` : ''}`;
+  const rt = rateT && rateT.i === w.cur && it.sets[rateT.k];
+  if (it.sets.length) h += `<div class="sets">${it.sets.map((s, i) => `<button class="setchip${s.feel ? ' f' + s.feel : ''}" data-a="wo-set" data-i="${i}"><b>${i + 1}</b>${setText(e, s)}</button>`).join('')}</div>`;
+  if (rt && !rt.feel) h += `<div class="rate-in"><span>Как прошёл подход?</span><div><button data-a="wo-rate" data-v="1" class="f1">Легко</button><button data-a="wo-rate" data-v="2" class="f2">Нормально</button><button data-a="wo-rate" data-v="3" class="f3">Тяжело</button></div></div>`;
 
   // Ввод подхода
   const md = modeOf(it.ex);
@@ -109,36 +102,49 @@ function vWorkout() {
   const stepper = (f, label, val, mode) => `<div class="field line"><label>${label}</label><div class="stepper">
     <button class="ibtn" data-a="wo-dec" data-f="${f}">−</button><input class="inp num" id="e-${f}" inputmode="${mode}" value="${val != null ? fmt(val) : ''}">
     <button class="ibtn" data-a="wo-inc" data-f="${f}">+</button></div></div>`;
-  h += `<div class="entry"><div class="muted small">${it.extra ? `Дополнительный подход ${done + 1} · по желанию` : `Подход ${done + 1} из ${need}${done >= need ? ' · сверх плана' : ''}`}</div>`;
+  const lastHint = !e.base && (e.type === 'w' || e.type === 'bw') && !it.extra && need > 0 && done === need - 1 ? ' · почти до отказа' : '';
+  h += `<div class="entry"><div class="muted small">${it.extra ? `Дополнительный подход ${done + 1}` : `Подход ${done + 1} из ${need}${done >= need ? ' · сверх плана' : ''}${lastHint}`}</div>`;
   if (e.type === 'time') {
     h += stepper('sec', 'Цель, секунд', entry.sec, 'numeric');
     h += hold ? `<div class="hold"><b class="num" id="hold-t">${Math.ceil((hold.start + hold.target * 1000 - Date.now()) / 1000)}</b><span>из ${hold.target} с</span>
         <button class="btn main" data-a="wo-hold-stop">Стоп — записать</button></div>`
       : `<button class="btn main hold-go" data-a="wo-hold">▶ Старт ${entry.sec || it.plan.lo} с</button>`;
-  }
-  else {
+  } else {
     h += e.type === 'bw' ? stepper('reps', 'Повторы', entry.reps, 'numeric')
-      : stepper('kg', kgLabel, entry.kg, 'decimal') + (e.type === 'w' ? `<div class="wmode"><button class="chip${md === 'total' ? ' on' : ''}" data-a="wo-wmode" data-v="total">${e.equip === 'dumbbell' ? 'Обе вместе' : 'Общий вес'}</button><button class="chip${md === 'each' ? ' on' : ''}" data-a="wo-wmode" data-v="each">${e.equip === 'dumbbell' ? 'Одна гантель' : 'На каждую сторону'}</button></div>` : '') + stepper('reps', 'Повторы', entry.reps, 'numeric');
+      : stepper('kg', kgLabel, entry.kg, 'decimal') + stepper('reps', 'Повторы', entry.reps, 'numeric');
   }
   if (e.equip === 'barbell' && md === 'total' && entry.kg) h += `<p class="note" style="margin:-6px 0 10px">${plates(entry.kg)}</p>`;
-  h += `<div class="row2"><button class="btn" data-a="wo-like" ${prev ? '' : 'disabled'}>Как в прошлый раз</button>
-      <button class="btn main" data-a="wo-log">Записать</button></div></div>
+  const voice = window.Capacitor && Capacitor.Plugins && Capacitor.Plugins.SpeechRecognition;
+  h += `<button class="btn ${e.type === 'time' ? '' : 'main'}" data-a="wo-log">Записать подход${e.type === 'time' ? ' вручную' : ''}</button>
+    <div class="entry-links">${prev ? '<button data-a="wo-like">Как в прошлый раз</button>' : ''}${voice ? '<button data-a="wo-voice" id="voice-btn">Голосом</button>' : ''}</div>`;
+  h += `</div>`;
+
+  // Всё второстепенное — под спойлерами
+  h += `<details class="spoil wo-sp" data-k="wo-how"${spoilOpen('wo-how')}><summary>Как делать</summary>
+    <div class="cue">${keyHTML(e)}<b>${esc(e.cue)}</b><span class="muted small">Темп: ${esc(e.tempo)}</span></div>
+    ${photosHTML(e, true)}
+    <button class="btn ghost" data-a="tech" data-ex="${it.ex}" style="margin:8px 0 4px">Подробная техника</button></details>`;
+  h += `<details class="spoil wo-sp" data-k="wo-more"${spoilOpen('wo-more')}><summary>Ещё</summary>
     <textarea class="inp note-inp" id="n-text" rows="2" maxlength="300" placeholder="Комментарий: сиденье на 4, хват уже… Покажется в следующий раз">${esc(it.note || '')}</textarea>
-    ${it.ss && w.cur > 0 ? `<button class="btn ghost" data-a="wo-go" data-i="${w.cur - 1}">‹ К «${esc(EX[w.items[w.cur - 1].ex].name)}»</button>` : ''}
-    ${w.items[w.cur + 1] && w.items[w.cur + 1].ss ? `<button class="btn ghost" data-a="wo-go" data-i="${w.cur + 1}">Суперсет: ${esc(EX[w.items[w.cur + 1].ex].name)} ›</button>` : ''}
-    <div class="wo-tools"><button class="btn ghost" data-a="wo-swap">Заменить</button><button class="btn ghost" data-a="wo-disc">Дискомфорт</button></div>`;
+    ${e.type === 'w' ? `<p class="muted small" style="margin:0 0 10px">Нет такого веса? Возьми ближайший: меньше — сделай побольше повторов, больше — поменьше (но не меньше ${it.plan.lo}). Впиши тот вес, что взял, — дальше приложение считает от него.</p>` : ''}
+    ${e.base && e.type === 'w' ? (it.warm ? `<button class="warm on" data-a="wo-warm">✓ разминка сделана</button>` : `<button class="warm" data-a="wo-warm"><i></i>Разминка: ${e.equip === 'barbell' ? 'пустой гриф' : 'лёгкий вес'} × 10–12</button>`) : ''}
+    ${e.type === 'w' ? `<div class="wmode"><button class="chip${md === 'total' ? ' on' : ''}" data-a="wo-wmode" data-v="total">${e.equip === 'dumbbell' ? 'Вес обеих вместе' : 'Общий вес'}</button><button class="chip${md === 'each' ? ' on' : ''}" data-a="wo-wmode" data-v="each">${e.equip === 'dumbbell' ? 'Вес одной гантели' : 'Вес на сторону'}</button></div>` : ''}
+    <div class="wo-tools"><button class="btn ghost" data-a="wo-swap">Заменить</button></div>
+    <button class="btn ghost danger" style="margin-top:6px" data-a="wo-cancel">Отменить тренировку без записи</button></details>`;
+  h += `${it.ss && w.cur > 0 ? `<button class="btn ghost" data-a="wo-go" data-i="${w.cur - 1}">‹ К «${esc(EX[w.items[w.cur - 1].ex].name)}»</button>` : ''}
+    ${w.items[w.cur + 1] && w.items[w.cur + 1].ss ? `<button class="btn ghost" data-a="wo-go" data-i="${w.cur + 1}">Суперсет: ${esc(EX[w.items[w.cur + 1].ex].name)} ›</button>` : ''}`;
   const last = w.cur === n - 1;
   if (autoNext && autoNext.from === w.cur && autoNext.ss)
     h += `<div class="auto-next ss"><span>Следом по суперсету: <b>${esc(EX[w.items[autoNext.to].ex].name)}</b></span><button class="btn" data-a="wo-stay">Остаться</button></div>`;
   else if (autoNext && autoNext.from === w.cur)
     h += `<div class="auto-next"><span>Следующее упражнение через <b id="auto-t">${Math.ceil((autoNext.until - Date.now()) / 1000)}</b> с</span><button class="btn" data-a="wo-stay">Остаться</button></div>`;
-  if (last && !it.extra) h += `<button class="btn ghost" style="margin-top:8px" data-a="wo-extra">+ Гравитрон — дополнительные подходы (по желанию)</button>`;
-  h += `<button class="btn ${done >= need ? 'main' : 'ghost'}" style="margin-top:8px" data-a="${last ? 'wo-finish' : 'wo-next'}">${last ? 'Завершить тренировку' : 'Следующее упражнение →'}</button></div>
-    <button class="btn ghost danger" style="margin-top:4px" data-a="wo-cancel">Отменить без записи</button>`;
-  if (w.restUntil > Date.now()) h += `<div class="rest" id="rest"><div><span class="muted small">Отдых</span><b class="num" id="rest-t">${mmss(w.restUntil - Date.now())}</b></div>
-    <button class="btn" data-a="wo-rest-add">+30 с</button><button class="btn" data-a="wo-rest-skip">Хватит</button></div>`;
+  h += `<button class="btn ${done >= need ? 'main' : 'ghost'}" style="margin-top:8px" data-a="${last ? 'wo-finish' : 'wo-next'}">${last ? 'Завершить тренировку' : 'Следующее упражнение →'}</button></div>`;
+  const resting = w.restUntil > Date.now();
+  if (resting) h += `<div class="rest" id="rest"><div><span class="muted small">Отдых</span><b class="num" id="rest-t">${mmss(w.restUntil - Date.now())}</b></div>
+    <button class="btn" data-a="wo-rest-add">+30 с</button><button class="btn" data-a="wo-rest-skip">Закончить отдых</button></div>`;
   return h;
 }
+let rateT = null;   // { i, k } — последний записанный подход, который ещё без оценки
 const plural = (n, one, few, many) => { const a = n % 10, b = n % 100; return a === 1 && b !== 11 ? one : a >= 2 && a <= 4 && (b < 12 || b > 14) ? few : many; };
 const mmss = ms => { const s = Math.max(0, Math.ceil(ms / 1000)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
 
@@ -228,15 +234,27 @@ function alarm(text) {
   playAlarmSound();
   notify(text || 'Отдых закончился — следующий подход');
 }
-async function notify(text) {
+// Отдых при выключенном экране: пока приложение свёрнуто, конец отдыха ставим системным будильником
+// (LocalNotifications) — WebView в фоне замирает и сам таймер не сработает.
+const LN = () => window.Capacitor && Capacitor.Plugins && Capacitor.Plugins.LocalNotifications;
+async function notify(text) { /* в приложении звук и вибрацию играет alarm(); фоновое уведомление — schedRest() */ }
+let lnReady = false;
+async function askNotify() {
+  const ln = LN(); if (!ln) return;
   try {
-    if (!('Notification' in window) || Notification.permission !== 'granted' || !navigator.serviceWorker) return;
-    const reg = await navigator.serviceWorker.ready;
-    reg.showNotification('Тренер', { body: text, tag: 'rest', renotify: true, vibrate: [600, 150, 600], icon: 'icons/icon-192.png', badge: 'icons/icon-192.png', silent: false });
-  } catch (e) { /* не страшно */ }
+    const p = await ln.requestPermissions(); lnReady = p.display === 'granted';
+    if (lnReady) await ln.createChannel({ id: 'rest', name: 'Конец отдыха', importance: 5, vibration: true, visibility: 1 });
+  } catch (e) {}
 }
-// Разрешение на уведомления спрашиваем один раз — при старте тренировки (нужно нажатие)
-function askNotify() { try { if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission(); } catch (e) {} }
+async function schedRest() {
+  const ln = LN(), w = D.active; if (!ln || !lnReady) return;
+  try {
+    await ln.cancel({ notifications: [{ id: 1 }] });
+    if (document.hidden && w && w.restUntil > Date.now() + 500)
+      await ln.schedule({ notifications: [{ id: 1, title: 'Тренер', body: 'Отдых закончился — следующий подход', channelId: 'rest', schedule: { at: new Date(w.restUntil), allowWhileIdle: true } }] });
+  } catch (e) {}
+}
+document.addEventListener('visibilitychange', schedRest);
 
 // Экран не гаснет, пока открыта тренировка
 async function keepAwake() {
@@ -262,7 +280,7 @@ function logSet(fromHold) {
     s.reps = Math.round(entry.reps);
     if (e.type !== 'bw') { if (entry.kg == null) return toast(e.type === 'assist' ? 'Впиши помощь' : 'Впиши вес'); s.kg = entry.kg; if (e.type === 'w') s.wm = modeOf(it.ex); }
   }
-  it.sets.push(s);
+  it.sets.push(s); rateT = { i: w.cur, k: it.sets.length - 1 };
   const more = it.extra || workSets(it).length < it.plan.sets || w.cur < w.items.length - 1;
   if (!it.ss) { w.restUntil = more ? Date.now() + it.plan.rest * 1000 : 0; lastPip = 0; }   // суперсет идёт в паузах основного — его таймер не трогаем
   // последний по плану подход — через 7 с сам переходим к следующему упражнению (отдых продолжается)
@@ -278,6 +296,28 @@ function logSet(fromHold) {
   } else if (!it.extra && workSets(it).length === it.plan.sets && w.cur < w.items.length - 1)
     autoNext = { until: Date.now() + AUTO_NEXT_MS, from: w.cur, to: w.cur + 1 };
   saveActive(); render(); restLoop();
+  if (!more && w.items.every(x => workSets(x).length >= x.plan.sets)) setTimeout(finishPrompt, 350);
+}
+
+// После последнего подхода по плану: выбор «завершить / ещё гравитрон», 20 секунд на ответ — иначе тренировка завершается сама
+let finTimer = 0;
+const FIN_SEC = 20;
+function finishPrompt() {
+  const w = D.active; if (!w || tab !== 'workout' || sheetOpen) return;
+  let left = FIN_SEC;
+  openSheet(`<h2>Тренировка выполнена</h2>
+    <p class="muted" style="margin:0 0 14px">${hasGrav() ? 'Завершить или добавить ещё подходы гравитрона?' : 'Завершить тренировку?'} Без ответа тренировка завершится сама.</p>
+    <button class="btn main" data-a="wo-finish-now">Завершить тренировку · <span id="fin-cd">${left}</span></button>
+    ${hasGrav() ? '<button class="btn" style="margin-top:8px" data-a="wo-extra">Ещё подходы гравитрона</button>' : ''}
+    <button class="btn ghost" style="margin-top:8px" data-a="sheetclose">Вернуться</button>`);
+  clearInterval(finTimer);
+  finTimer = setInterval(() => {
+    const el = document.getElementById('fin-cd');
+    if (!el || !D.active) return clearInterval(finTimer);   // окно закрыли — ждать больше не надо
+    if (document.hidden) return;                            // приложение свёрнуто — время не идёт
+    left--; el.textContent = left;
+    if (left <= 0) { clearInterval(finTimer); closeSheet(); finishWorkout(true); }
+  }, 1000);
 }
 
 // ───── Итог ─────
@@ -302,14 +342,14 @@ function findRecords(w) {
   }
   return out;
 }
-async function finishWorkout() {
+async function finishWorkout(skipAsk) {
   const w = D.active, total = w.items.reduce((a, it) => a + workSets(it).length, 0);
   if (!total) {
     if (!confirm('Ни одного подхода не записано. Отменить тренировку?')) return;
     D.active = null; await saveActive(); tab = 'today'; render(); return;
   }
   const left = w.items.reduce((a, it) => a + Math.max(0, it.plan.sets - workSets(it).length), 0);
-  if (left && !confirm(`Осталось подходов: ${left}. Завершить тренировку?`)) return;
+  if (left && !skipAsk && !confirm(`Осталось подходов: ${left}. Завершить тренировку?`)) return;
   // Забыл нажать «Завершить»: если после последнего действия прошло больше 10 минут, тренировка закончилась тогда
   const idleTail = Date.now() - lastAct(w) > IDLE_MS;
   const end = w.pauseAt || (idleTail ? lastAct(w) + 60000 : Date.now());
@@ -317,10 +357,24 @@ async function finishWorkout() {
     items: w.items.filter(it => it.sets.length || it.warm).map(it => ({ ex: it.ex, orig: it.orig || null, plan: it.plan, warm: it.warm, sets: it.sets, note: it.note, disc: it.disc, extra: it.extra || undefined })) };
   rec.records = findRecords(rec);
   D.workouts.push(rec); await dbPut('workouts', rec);
-  if (ghOn()) ghPush();  // копия в GitHub — сама после каждой тренировки
   D.active = null; await saveActive();
   clearInterval(restTimer); tab = 'today'; selDay = null; render(); keepAwake();
   sheetSummary(rec);
+}
+// «Завершить»: вместо «Точно завершить?» — выбор по ситуации
+function sheetFinish() {
+  const w = D.active, total = w.items.reduce((a, it) => a + workSets(it).length, 0);
+  if (!total) return finishWorkout();
+  const left = w.items.reduce((a, it) => a + Math.max(0, it.plan.sets - workSets(it).length), 0);
+  if (left) openSheet(`<h2>Осталось подходов: ${left}</h2>
+    <p class="muted" style="margin:0 0 14px">Можно вернуться и доделать или закончить как есть — записанное сохранится.</p>
+    <button class="btn main" data-a="sheetclose">Вернуться к тренировке</button>
+    <button class="btn" style="margin-top:8px" data-a="wo-finish-now">Завершить как есть</button>`);
+  else openSheet(`<h2>Все подходы по плану сделаны</h2>
+    <p class="muted" style="margin:0 0 14px">${hasGrav() ? 'Завершить тренировку или добавить ещё подходы гравитрона?' : 'Завершить тренировку?'}</p>
+    <button class="btn main" data-a="wo-finish-now">Завершить тренировку</button>
+    ${hasGrav() ? '<button class="btn" style="margin-top:8px" data-a="wo-extra">Ещё подходы гравитрона</button>' : ''}
+    <button class="btn ghost" style="margin-top:8px" data-a="sheetclose">Вернуться</button>`);
 }
 function sheetSummary(w) {
   const min = Math.max(1, Math.round((w.end - w.start - (w.paused || 0)) / 60000)), ton = tonnage(w), sets = w.items.reduce((a, it) => a + workSets(it).length, 0);
@@ -328,11 +382,11 @@ function sheetSummary(w) {
   let cmp = '';
   if (prev && ton) { const pt = tonnage(prev); if (pt) { const d = Math.round((ton - pt) / pt * 100); cmp = `${d > 0 ? '+' : ''}${d}% к прошлому разу`; } }
   const recs = w.records || [];
-  openSheet(`<h2>${recs.length ? 'Есть рекорды!' : 'Тренировка записана'}</h2>
+  openSheet(`<h2>Тренировка записана</h2>
     <div class="sum"><div><span class="num">${min}</span><small>${plural(min, 'минута', 'минуты', 'минут')}</small></div><div><span class="num">${sets}</span><small>${plural(sets, 'подход', 'подхода', 'подходов')}</small></div>
       <div><span class="num">${ton ? ton.toLocaleString('ru-RU') : '—'}</span><small>кг поднято</small></div></div>
     ${cmp ? `<p class="note" style="margin:0 0 10px;text-align:center">${cmp}</p>` : ''}
-    ${recs.length ? `<div class="sec">Рекорды</div><ul class="exl">${recs.map(r => `<li><div class="n"><b>${esc(EX[r.ex].name)}</b><span>${esc(r.txt)}</span></div><div class="w acc">★</div></li>`).join('')}</ul>` : ''}
+    ${recs.length ? `<div class="sec">Есть рекорды!</div><ul class="exl">${recs.map(r => `<li><div class="n"><b>${esc(EX[r.ex].name)}</b><span>${esc(r.txt)}</span></div><div class="w acc">★</div></li>`).join('')}</ul>` : ''}
     ${w.light ? '<p class="note">Облегчённая тренировка — прибавок по ней не будет.</p>' : ''}
     <button class="btn main" style="margin-top:12px" data-a="sheetclose">Отлично</button>`);
 }
@@ -355,14 +409,16 @@ function swapChoices(ex) {
 function sheetSwap() {
   const it = curItem();
   openSheet(`<h2>Заменить на сегодня</h2><p class="muted small" style="margin:-4px 0 10px">Тренажёр занят или неудобно. Программа не меняется.</p>
-    <ul class="exl ex-pick">${swapChoices(it.ex).map(id => `<li data-a="wo-swap-view" data-ex="${id}"><div class="n"><b>${esc(EX[id].name)}</b><span>${esc(EX[id].muscles)}</span></div><div class="w muted">›</div></li>`).join('')}</ul>`);
+    ${(() => { const all = swapChoices(it.ex), top = all.filter(id => EX[it.ex].subs.includes(id)), rest = all.filter(id => !top.includes(id));
+      const li = id => `<li data-a="wo-swap-view" data-ex="${id}"><div class="n"><b>${esc(EX[id].name)}</b><span>${esc(EX[id].muscles)}</span></div><div class="w muted">›</div></li>`;
+      return (top.length ? `<h3 class="sub-h">Подходят</h3><ul class="exl ex-pick">${top.map(li).join('')}</ul><h3 class="sub-h">Другие упражнения группы</h3>` : '') + `<ul class="exl ex-pick">${rest.map(li).join('')}</ul>`; })()}`);
 }
 // Просмотр упражнения перед заменой: фото, подсказка, техника → «Выбрать» или «К списку»
 function sheetSwapView(id) {
   const e = EX[id];
   openSheet(`<h2>${esc(e.name)}</h2>${photosHTML(e)}
     <p class="muted small" style="margin:0 0 6px">${esc(e.muscles)}</p>
-    <div class="cue"><b>${esc(e.cue)}</b><span class="muted small">Темп: ${esc(e.tempo)}</span></div>
+    <div class="cue">${keyHTML(e)}<b>${esc(e.cue)}</b><span class="muted small">Темп: ${esc(e.tempo)}</span></div>
     <ol class="tech">${e.tech.map(t => `<li>${esc(t)}</li>`).join('')}</ol>
     <div class="row2 sticky-actions"><button class="btn" data-a="wo-swap">← К списку</button><button class="btn main" data-a="wo-swap-to" data-ex="${id}">Выбрать</button></div>`);
 }
@@ -391,28 +447,33 @@ document.addEventListener('click', async ev => {
   if (!/^(wo-|ck$|dz$|dl$|sheetclose$)/.test(a)) return;
   ensureAudio();
   const w = D.active;
-  if (a !== 'wo-resume' && a !== 'wo-finish-paused' && a !== 'wo-finish') touch();
+  if (a !== 'wo-resume' && a !== 'wo-finish-paused' && a !== 'wo-finish' && a !== 'wo-finish-now') touch();
   switch (a) {
     case 'wo-resume': if (w && w.pauseAt) { w.paused = (w.paused || 0) + Date.now() - w.pauseAt; w.pauseAt = 0; w.lastAct = Date.now(); saveActive(); } closeSheet(); render(); break;
-    case 'wo-finish-paused': closeSheet(); finishWorkout(); break;
+    case 'wo-finish-paused': closeSheet(); finishWorkout(true); break;
+    case 'wo-finish-now': closeSheet(); finishWorkout(true); break;
     case 'sheetclose': closeSheet(); break;
     case 'ck': checkSt[ds.k] = +ds.v; sheetCheck(checkSt.dayId); break;
     case 'wo-begin': askNotify(); startWorkout(checkSt.dayId, !!ds.light); break;
     case 'wo-back': autoNext = null; hold = null; readEntry(); tab = 'today'; render(); keepAwake(); break;
     case 'wo-go': autoNext = null; hold = null; readEntry(); w.cur = +ds.i; saveActive(); render(); scrollTo(0, 0); break;
     case 'wo-next': autoNext = null; hold = null; readEntry(); w.cur = Math.min(w.items.length - 1, w.cur + 1); saveActive(); render(); scrollTo(0, 0); break;
-    case 'wo-finish': readEntry(); finishWorkout(); break;
+    case 'wo-finish': readEntry(); sheetFinish(); break;
     case 'wo-cancel':
       if (!confirm('Отменить тренировку? Ничего не сохранится.')) return;
-      D.active = null; await saveActive(); clearInterval(restTimer); entry = null; tab = 'today'; render(); toast('Тренировка отменена'); break;
+      rateT = null; D.active = null; await saveActive(); clearInterval(restTimer); entry = null; tab = 'today'; render(); toast('Тренировка отменена'); break;
+    case 'wo-rate': { const st = rateT && w.items[rateT.i] && w.items[rateT.i].sets[rateT.k]; if (st) { st.feel = +ds.v; saveActive(); } rateT = null; render(); break; }
     case 'wo-warm': { const it = curItem(); it.warm = !it.warm; saveActive(); render(); break; }
     case 'wo-inc': case 'wo-dec': {
       readEntry(); const it = curItem(), d = a === 'wo-inc' ? 1 : -1;
-      if (ds.f === 'kg') entry.kg = Math.max(0, Math.round(((entry.kg || 0) + d * (itemStep(it) || 1)) * 100) / 100);
+      const stk = stackOf(it.ex), k0 = entry.kg || 0;
+      if (ds.f === 'kg' && stk) entry.kg = d > 0 ? (stk.find(x => x > k0 + 0.001) ?? k0) : ([...stk].reverse().find(x => x < k0 - 0.001) ?? k0);
+      else if (ds.f === 'kg') entry.kg = Math.max(0, Math.round(((entry.kg || 0) + d * (itemStep(it) || 1)) * 100) / 100);
       if (ds.f === 'reps') entry.reps = Math.max(1, (entry.reps || 0) + d);
       if (ds.f === 'sec') entry.sec = Math.max(5, (entry.sec || 0) + d * 5);
       render(); break;
     }
+    case 'wo-voice': voiceSet(); break;
     case 'wo-log': hold = null; logSet(); break;
     case 'wo-hold': {
       readEntry(); const target = Math.round(entry.sec || curItem().plan.lo);
@@ -445,9 +506,10 @@ document.addEventListener('click', async ev => {
     }
     case 'wo-set-del': curItem().sets.splice(+ds.i, 1); saveActive(); entry = null; closeSheet(); render(); break;
     case 'wo-extra': {
-      readEntry();
-      w.items.push({ ex: 'gravitron', extra: true, plan: { sets: 0, lo: 6, hi: 10, rest: 90 }, sets: [], warm: false, note: '', disc: [], ss: false });
-      w.cur = w.items.length - 1; entry = null; saveActive(); render(); scrollTo(0, 0); break;
+      readEntry(); closeSheet();
+      let xi = w.items.findIndex(x => x.extra);
+      if (xi < 0) { w.items.push({ ex: 'gravitron', extra: true, plan: { sets: 0, lo: 6, hi: 10, rest: 90 }, sets: [], warm: false, note: '', disc: [], ss: false }); xi = w.items.length - 1; }
+      w.cur = xi; entry = null; saveActive(); render(); scrollTo(0, 0); break;
     }
     case 'wo-pin': {   // закрепить замену в программе — только в этом дне
       const it = curItem(), from = ds.from;
@@ -490,3 +552,34 @@ document.addEventListener('click', async ev => {
 document.addEventListener('input', ev => {
   if (D.active && /^(e-|n-text)/.test(ev.target.id)) touch();
   if (ev.target.id === 'n-text' && D.active) { curItem().note = ev.target.value.trim(); clearTimeout(noteT); noteT = setTimeout(saveActive, 400); } if (entry && /^e-/.test(ev.target.id)) entry[ev.target.id.slice(2)] = num(ev.target.value); });
+
+// ───── Голосовой ввод: «80 на 8», «восемьдесят на восемь», «12 повторов», «40 секунд» ─────
+const WORDS = { ноль: 0, один: 1, одна: 1, два: 2, две: 2, три: 3, четыре: 4, пять: 5, шесть: 6, семь: 7, восемь: 8, девять: 9, десять: 10, одиннадцать: 11, двенадцать: 12, тринадцать: 13, четырнадцать: 14, пятнадцать: 15, шестнадцать: 16, семнадцать: 17, восемнадцать: 18, девятнадцать: 19, двадцать: 20, тридцать: 30, сорок: 40, пятьдесят: 50, шестьдесят: 60, семьдесят: 70, восемьдесят: 80, девяносто: 90, сто: 100 };
+function spokenNumbers(text) {
+  const t = text.toLowerCase().replace(/,/g, '.').replace(/(\d)\s*\.\s*(\d)/g, '$1.$2').replace(/\bи пять\b|\bс половиной\b/g, ' .5');
+  const out = []; let acc = null;
+  for (const tok of t.split(/[^а-яё0-9.]+/).filter(Boolean)) {
+    if (/^\d+(\.\d+)?$/.test(tok)) { if (acc != null) { out.push(acc); acc = null; } out.push(parseFloat(tok)); }
+    else if (tok in WORDS) { acc = (acc || 0) + WORDS[tok]; }
+    else if (acc != null) { out.push(acc); acc = null; }
+  }
+  if (acc != null) out.push(acc);
+  return out;
+}
+async function voiceSet() {
+  const sr = Capacitor.Plugins.SpeechRecognition, it = curItem(), e = EX[it.ex], b = $('#voice-btn');
+  try {
+    const p = await sr.requestPermissions();
+    if (p.speechRecognition !== 'granted') return toast('Нужен доступ к микрофону');
+    if (b) b.textContent = '🎤 Слушаю…';
+    const r = await sr.start({ language: 'ru-RU', maxResults: 3, prompt: 'Скажи подход', partialResults: false, popup: false });
+    const said = (r.matches || [])[0] || '', n = spokenNumbers(said);
+    if (b) b.textContent = '🎤 Сказать подход';
+    if (!n.length) return toast('Не расслышал: «' + said + '»');
+    if (e.type === 'time') entry.sec = n[0];
+    else if (e.type === 'bw') entry.reps = Math.round(n[0]);
+    else if (n.length >= 2) { entry.kg = n[0]; entry.reps = Math.round(n[1]); }
+    else return toast('Скажи вес и повторы: «80 на 8»');
+    render(); toast('Понял: ' + (e.type === 'time' ? n[0] + ' с' : e.type === 'bw' ? entry.reps + ' повт.' : entry.kg + ' × ' + entry.reps) + ' — проверь и жми «Записать»');
+  } catch (err) { if (b) b.textContent = '🎤 Сказать подход'; toast('Голос не сработал'); }
+}

@@ -41,7 +41,7 @@ function defaultSettings() {
 }
 
 // D — всё в памяти. Новые поля добавляй в defaultSettings, старые не переименовывай.
-const D = { settings: null, program: null, active: null, insights: null, workouts: [], walks: [], body: [] };
+const D = { settings: null, program: null, active: null, insights: null, workouts: [], walks: [], body: [], hlog: {} };
 
 async function dbLoad() {
   await dbOpen();
@@ -53,9 +53,43 @@ async function dbLoad() {
   if ((D.program.v || 1) < 6) { const week = D.program.week; D.program = defaultProgram(); D.program.week = week; }
   // v6 → v7 (0.19): программа не заменяется (правки Андрея остаются) — в пятницу добавляем скручивания в тренажёре
   if (D.program.v === 6 && D.program.days.D && !D.program.days.D.items.some(x => x.ex === 'crunch_m')) D.program.days.D.items.push(defaultProgram().days.D.items.find(x => x.ex === 'crunch_m'));
+  // v7 → v8 (16.0): в программе разведение гантелей меняем на разведение на нижнем блоке (остальные правки остаются)
+  if (D.program.v < 8) for (const day of Object.values(D.program.days)) for (const x of day.items) if (x.ex === 'lat_raise') { x.ex = 'cable_lat_raise'; delete x.step; }
+  // v8 → v9 (21.0): в дне C (ноги) жим ногами меняем на присед в тренажёре; жим остаётся в дне D
+  if (D.program.v < 9 && D.program.days.C) { const x = D.program.days.C.items.find(y => y.ex === 'leg_press'); if (x) { x.ex = 'machine_squat'; delete x.step; } }
+  // v9 → v10 (24.0): новая программа на 5 дней (ноги в субботу, бег в среду). Шаги прибавки по тем же упражнениям переносим
+  if (D.program.v < 10) {
+    const old = D.program, steps = {};
+    for (const day of Object.values(old.days)) for (const x of day.items) if (x.step != null) steps[x.ex] = x.step;
+    D.program = defaultProgram();
+    for (const day of Object.values(D.program.days)) for (const x of day.items) if (steps[x.ex] != null) x.step = steps[x.ex];
+  }
+  // v10 → v11 (26.0): в дне E румынская тяга меняется на тягу в Смите
+  if (D.program.v < 11) for (const day of Object.values(D.program.days)) for (const x of day.items) if (x.ex === 'rdl') { x.ex = 'smith_rdl'; delete x.step; }
+  // v11 → v12 (29.0): в «авторской» программе во вторник (день B) и четверг (день C) сгибание на блоке меняется на подъём EZ-штанги
+  if (D.program.v < 12) for (const [id, nm] of [['B', 'Спина, бицепс, трапеции'], ['C', 'Плечи и руки']]) { const d = D.program.days[id]; if (d && d.name === nm) for (const x of d.items) if (x.ex === 'curl') { x.ex = 'ez_curl'; delete x.step; } }
+  // v12 → v13 (33.0): в «авторской» программе в пятницу (день D) разведения в кроссовере меняются на обратную бабочку
+  if (D.program.v < 13) { const d = D.program.days.D; if (d && d.name === 'Верх: грудь, спина, дельты') for (const x of d.items) if (x.ex === 'rear_cable') { x.ex = 'rear_fly'; delete x.step; } }
+  // v13 → v14 (34.0): в «авторской» программе новое время отдыха (2 мин у тяжёлых, 75 с у изоляции, 60 с у пресса). Подходы, повторы и шаги не меняются
+  if (D.program.v < 14) for (const nm of ['Грудь, трицепс, пресс', 'Спина, бицепс, трапеции', 'Плечи и руки', 'Верх: грудь, спина, дельты', 'Ноги']) { const d = Object.values(D.program.days).find(x => x.name === nm); if (d) for (const x of d.items) x.rest = restOf(x.ex); }
+  // v14 → v15 (36.0): в «авторской» программе в пятницу (день D) после жима от груди добавляется наклонный жим в рычажном тренажёре
+  if (D.program.v < 15) { const d = D.program.days.D; if (d && d.name === 'Верх: грудь, спина, дельты' && !d.items.some(x => x.ex === 'incl_press_m')) { const i = d.items.findIndex(x => x.ex === 'chest_press'); const n = { ex: 'incl_press_m', sets: 3, lo: 8, hi: 12, rest: restOf('incl_press_m') }; d.items.splice(i < 0 ? 0 : i + 1, 0, n); } }
   if (D.program.v !== PROGRAM_V) { D.program.v = PROGRAM_V; await dbPut('kv', { id: 'program', val: D.program }); }
   D.active = get('active') || null;
   D.insights = get('insights') || { weekly: [], plateaus: [] };
+  D.hlog = get('hlog') || {};
+  // 22.0: тренировка 30.10 — приседания, записанные как гоблет-присед, на самом деле были в рычажном тренажёре
+  // 32.0: жим плеч 05.11 делался в рычажном тренажёре с блинами, вес вписан на одну сторону (раньше писался как «общий»). Октябрьские записи не трогаем
+  if (!D.settings.fix32) {
+    const w = (await dbAll('workouts')).find(x => x.date === '2026-11-05' && x.day === 'C'), it = w && w.items.find(i => i.ex === 'sh_press');
+    if (it && it.sets.some(s => s.wm === 'total')) { for (const s of it.sets) if (s.wm === 'total') s.wm = 'each'; await dbPut('workouts', w); }
+    D.settings.fix32 = 1; await dbPut('kv', { id: 'settings', val: D.settings });
+  }
+  if (!D.settings.fix22) {
+    const w = (await dbAll('workouts')).find(x => x.id === 'mvubts3oe8yw'), g = w && w.items.find(i => i.ex === 'goblet');
+    if (g) { g.ex = 'machine_squat'; await dbPut('workouts', w); }
+    D.settings.fix22 = 1; await dbPut('kv', { id: 'settings', val: D.settings });
+  }
   D.workouts = (await dbAll('workouts')).sort((a, b) => a.date < b.date ? -1 : 1);
   D.walks = (await dbAll('walks')).sort((a, b) => a.date < b.date ? -1 : 1);
   D.body = (await dbAll('body')).sort((a, b) => a.date < b.date ? -1 : 1);
@@ -69,12 +103,12 @@ async function dbExport() {
   for (const b of D.body) body.push(Object.assign({}, b, { photo: b.photo ? await blobToData(b.photo) : null }));
   return { app: 'trener', v: 1, at: new Date().toISOString(),
     settings: D.settings, program: D.program, active: D.active, insights: D.insights,
-    workouts: D.workouts, walks: D.walks, body };
+    workouts: D.workouts, walks: D.walks, body, hlog: D.hlog };
 }
 async function dbImport(o) {
   if (!o || o.app !== 'trener') throw new Error('Это не файл бэкапа «Тренера»');
   for (const s of STORES) await dbClear(s);
-  for (const k of ['settings', 'program', 'active', 'insights']) if (o[k]) await dbPut('kv', { id: k, val: o[k] });
+  for (const k of ['settings', 'program', 'active', 'insights', 'hlog']) if (o[k]) await dbPut('kv', { id: k, val: o[k] });
   for (const w of o.workouts || []) await dbPut('workouts', w);
   for (const w of o.walks || []) await dbPut('walks', w);
   for (const b of o.body || []) {

@@ -1,0 +1,22 @@
+# сборки и ключи
+*.apk
+*.aab
+*.keystore
+*.jks
+APK/
+node_modules/
+build/
+.gradle/
+*.zip
+*.tar.gz
+.DS_Store
+# локальное
+_archive/
+docs/private/
+local.properties
+# Capacitor: копия сайта и сгенерированные файлы (собираются tools/build.sh)
+app/www/
+app/android/app/src/main/assets/public/
+app/android/app/src/main/assets/capacitor.config.json
+app/android/app/src/main/assets/capacitor.plugins.json
+app/android/capacitor-cordova-android-plugins/
