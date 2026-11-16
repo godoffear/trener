@@ -74,6 +74,8 @@ async function dbLoad() {
   if (D.program.v < 14) for (const nm of ['Грудь, трицепс, пресс', 'Спина, бицепс, трапеции', 'Плечи и руки', 'Верх: грудь, спина, дельты', 'Ноги']) { const d = Object.values(D.program.days).find(x => x.name === nm); if (d) for (const x of d.items) x.rest = restOf(x.ex); }
   // v14 → v15 (36.0): в «авторской» программе в пятницу (день D) после жима от груди добавляется наклонный жим в рычажном тренажёре
   if (D.program.v < 15) { const d = D.program.days.D; if (d && d.name === 'Верх: грудь, спина, дельты' && !d.items.some(x => x.ex === 'incl_press_m')) { const i = d.items.findIndex(x => x.ex === 'chest_press'); const n = { ex: 'incl_press_m', sets: 3, lo: 8, hi: 12, rest: restOf('incl_press_m') }; d.items.splice(i < 0 ? 0 : i + 1, 0, n); } }
+  // v15 → v16 (38.0): в понедельник (A) и четверг (C): сначала разгибание из-за головы, потом разгибание на блоке в суперсете с прессом на блоке
+  if (D.program.v < 16) for (const [id, nm] of [['A', 'Грудь, трицепс, пресс'], ['C', 'Плечи и руки']]) { const d = D.program.days[id]; if (!d || d.name !== nm) continue; const it = d.items, p = it.findIndex(x => x.ex === 'pushdown'), r = it.findIndex(x => x.ex === 'rope_ovh'), c = it.findIndex(x => x.ex === 'cable_crunch'); if (p < 0 || r !== p + 1 || c !== r + 1) continue; const P = it[p], R = it[r]; delete R.ss; it[p] = R; it[r] = P; it[c].ss = true; }
   if (D.program.v !== PROGRAM_V) { D.program.v = PROGRAM_V; await dbPut('kv', { id: 'program', val: D.program }); }
   D.active = get('active') || null;
   D.insights = get('insights') || { weekly: [], plateaus: [] };
