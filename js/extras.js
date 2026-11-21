@@ -162,11 +162,32 @@ async function ghPut(c, path, content, msg) {
   const p = await fetch(url, { method: 'PUT', headers: Object.assign({ 'Content-Type': 'application/json' }, hd), body: JSON.stringify({ message: msg, content, sha }) });
   if (!p.ok) throw new Error(p.status === 404 ? 'репозиторий не найден' : p.status === 403 || p.status === 401 ? 'нет прав записи' : 'ошибка ' + p.status);
 }
+const ghData = data => Object.assign({}, data, { body: (data.body || []).map(b => Object.assign({}, b, { photo: b.photo ? '(фото не отправляется)' : null })) });
+// Ночная копия 23:59: приложение отдаёт нативной задаче свежий снимок и настройки GitHub (задача сама зальёт их без открытия приложения)
+const ABp = () => window.Capacitor && Capacitor.Plugins && Capacitor.Plugins.AutoBackup;
+let AB_ST = null;
+async function abStatus() {
+  const ab = ABp(); if (!ab) return;
+  try { AB_ST = await ab.status(); } catch (e) { return; }
+  const el = $('#ab-line'); if (el) el.innerHTML = abLine();
+}
+function abLine() {
+  if (!ABp()) return '';
+  if (!ghOn()) return 'Автокопия 23:59: выключена (нужны репозиторий и токен выше)';
+  const s = AB_ST; if (!s || (!s.at && !s.err)) return 'Автокопия 23:59: ещё не запускалась';
+  const d = s.at ? new Date(s.at) : null, when = d ? `${pad(d.getDate())}.${pad(d.getMonth() + 1)} ${hhmm(s.at)}` : '';
+  return 'Автокопия 23:59: ' + (s.err ? `✗ ${esc(s.err)}${when ? ' (последний успех ' + when + ')' : ''}` : `✓ ${when}`);
+}
+async function abPush() {
+  const ab = ABp(), c = ghCfg(); if (!ab || !c.token || !c.repo) return;
+  try { await ab.setSnapshot({ text: JSON.stringify(ghData(await dbExport())), repo: c.repo, token: c.token }); } catch (e) { /* не вышло — повторим при следующем сохранении */ }
+  abStatus();
+}
 async function ghPush(data) {
   const c = ghCfg(); if (!c.token || !c.repo) return null;
   try {
     if (!navigator.onLine) throw new Error('нет сети');
-    const d = Object.assign({}, data, { body: (data.body || []).map(b => Object.assign({}, b, { photo: b.photo ? '(фото не отправляется)' : null })) });
+    const d = ghData(data);
     const content = b64(JSON.stringify(d)), day = dk(new Date());
     await ghPut(c, 'trener/latest.json', content, 'Тренер: копия ' + day);
     await ghPut(c, `trener/history/trener_${day}.json`, content, 'Тренер: копия за ' + day);
@@ -178,7 +199,7 @@ async function autoBackup(manual) {
   const data = await dbExport(), json = JSON.stringify(data), res = { at: Date.now(), phone: null, gh: null };
   const bk = BKp();
   if (bk) { try { await bk.save({ name: `Trener_backup_${dk(new Date())}.json`, text: json }); res.phone = ''; } catch (e) { res.phone = String(e && e.message || e); } }
-  res.gh = await ghPush(data);
+  res.gh = await ghPush(data); abPush();
   D.settings.bkLast = res; await saveKV('settings');
   if (manual) { toast(`Телефон: ${res.phone === '' ? 'готово' : res.phone === null ? 'нет' : 'не вышло'}${ghOn() ? ` · GitHub: ${res.gh === '' ? 'готово' : 'не вышло'}` : ''}`); render(); }
 }
@@ -201,7 +222,8 @@ function moreExtrasHTML() {
       <div class="field"><input class="inp" id="gh-repo" placeholder="владелец/репозиторий, например godoffear/trener-data" value="${esc(c.repo || '')}" autocapitalize="off" autocomplete="off"></div>
       <div class="field"><input class="inp" id="gh-token" type="password" placeholder="${c.token ? 'токен сохранён (введи новый, чтобы заменить)' : 'токен GitHub (fine-grained, Contents: Read and write)'}" autocomplete="off"></div>
       <div class="row2"><button class="btn" data-a="gh-save">Сохранить</button><button class="btn" data-a="bk-now">Копия сейчас</button></div>
-      <p class="muted small" style="margin:10px 0 0">${backupInfo()}</p></details>`;
+      <p class="muted small" style="margin:10px 0 0">${backupInfo()}</p>
+      <p class="muted small" id="ab-line" style="margin:6px 0 0">${abLine()}</p>${ABp() && ghOn() ? '<button class="btn ghost" style="margin-top:8px" data-a="ab-now">Ночная копия сейчас (проверка)</button>' : ''}</details>`;
 }
 document.addEventListener('click', async ev => {
   const a = ev.target.closest && ev.target.closest('[data-a]'), an = ev.target.closest && ev.target.closest('.anim');
@@ -214,8 +236,9 @@ document.addEventListener('click', async ev => {
       const c = ghCfg(), repo = ($('#gh-repo').value || '').trim().replace(/^https?:\/\/github\.com\//, ''), tk = ($('#gh-token').value || '').trim();
       if (repo && !/^[\w.-]+\/[\w.-]+$/.test(repo)) return toast('Репозиторий в виде владелец/название');
       try { localStorage.setItem(GH_KEY, JSON.stringify({ repo, token: tk || c.token || '' })); } catch (e) {}
-      toast(repo ? 'Сохранил. Проверю при следующей копии' : 'Копия в GitHub выключена'); render(); break;
+      toast(repo ? 'Сохранил. Проверю при следующей копии' : 'Копия в GitHub выключена'); abPush(); render(); break;
     }
+    case 'ab-now': { const ab = ABp(); if (!ab) break; toast('Запускаю ночную копию…'); await abPush(); try { await ab.runNow(); } catch (e) {} setTimeout(abStatus, 6000); setTimeout(abStatus, 15000); break; }
     case 'bk-now': toast('Делаю копию…'); autoBackup(true); break;
   }
 });
@@ -319,10 +342,10 @@ function statsExtra2HTML() { return groupSpoil('a-sum-all', 'Итоги и ре�
   finishWorkout = async function (...a) { const n = D.workouts.length; await baseFinish(...a); if (D.workouts.length > n) { autoBackup(false); schedSummaries(); } };
   const baseAsk = askNotify;
   askNotify = async function () { await baseAsk(); await lnInit(true); updateOngoing(); };
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) { hcRefresh(); updateOngoing(); } });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) { hcRefresh(); updateOngoing(); abStatus(); } else abPush(); });
   const t = setInterval(async () => {
     if (!(typeof D !== 'undefined' && D.settings)) return; clearInterval(t);
-    await lnInit(false); schedSummaries(); updateOngoing(); hcRefresh();
+    await lnInit(false); schedSummaries(); updateOngoing(); hcRefresh(); abPush();
     if (!D.settings.bkLast || Date.now() - D.settings.bkLast.at > 864e5 * 3) autoBackup(false);
   }, 500);
 })();

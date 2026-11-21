@@ -12,6 +12,7 @@ public class MainActivity extends BridgeActivity {
     protected void onCreate(Bundle savedInstanceState) {
         registerPlugin(BackupPlugin.class);
         registerPlugin(UpdaterPlugin.class);
+        registerPlugin(AutoBackupPlugin.class);
         super.onCreate(savedInstanceState);
         // Edge-to-edge: опускаем содержимое под строку состояния (время, уведомления), низ WebView обрабатывает сам
         final View content = findViewById(android.R.id.content);

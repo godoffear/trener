@@ -103,7 +103,7 @@ const blobToData = b => new Promise(ok => { const r = new FileReader(); r.onload
 async function dbExport() {
   const body = [];
   for (const b of D.body) body.push(Object.assign({}, b, { photo: b.photo ? await blobToData(b.photo) : null }));
-  return { app: 'trener', v: 1, at: new Date().toISOString(),
+  return { app: 'trener', v: 1, at: new Date().toISOString(), exportedAt: new Date().toISOString(), apkVersion: typeof APP_VERSION === 'string' ? APP_VERSION : null,
     settings: D.settings, program: D.program, active: D.active, insights: D.insights,
     workouts: D.workouts, walks: D.walks, body, hlog: D.hlog };
 }
