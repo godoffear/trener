@@ -76,6 +76,13 @@ async function dbLoad() {
   if (D.program.v < 15) { const d = D.program.days.D; if (d && d.name === 'Верх: грудь, спина, дельты' && !d.items.some(x => x.ex === 'incl_press_m')) { const i = d.items.findIndex(x => x.ex === 'chest_press'); const n = { ex: 'incl_press_m', sets: 3, lo: 8, hi: 12, rest: restOf('incl_press_m') }; d.items.splice(i < 0 ? 0 : i + 1, 0, n); } }
   // v15 → v16 (38.0): в понедельник (A) и четверг (C): сначала разгибание из-за головы, потом разгибание на блоке в суперсете с прессом на блоке
   if (D.program.v < 16) for (const [id, nm] of [['A', 'Грудь, трицепс, пресс'], ['C', 'Плечи и руки']]) { const d = D.program.days[id]; if (!d || d.name !== nm) continue; const it = d.items, p = it.findIndex(x => x.ex === 'pushdown'), r = it.findIndex(x => x.ex === 'rope_ovh'), c = it.findIndex(x => x.ex === 'cable_crunch'); if (p < 0 || r !== p + 1 || c !== r + 1) continue; const P = it[p], R = it[r]; delete R.ss; it[p] = R; it[r] = P; it[c].ss = true; }
+  // v16 → v17 (40.0): косые мышцы — Пн: подъём ног по диагонали вместо прямого; Чт: дровосек на блоке в конце; Пт: боковая планка в суперсете после разведения в стороны на блоке
+  if (D.program.v < 17) {
+    const A = D.program.days.A, C = D.program.days.C, Dd = D.program.days.D;
+    if (A && A.name === 'Грудь, трицепс, пресс') for (const x of A.items) if (x.ex === 'chair_lr') x.ex = 'chair_lr_diag';
+    if (C && C.name === 'Плечи и руки' && !C.items.some(x => x.ex === 'cable_woodchop')) C.items.push({ ex: 'cable_woodchop', sets: 3, lo: 10, hi: 12, rest: restOf('cable_woodchop') });
+    if (Dd && Dd.name === 'Верх: грудь, спина, дельты' && !Dd.items.some(x => x.ex === 'side_plank')) { const i = Dd.items.findIndex(x => x.ex === 'cable_lat_raise'); Dd.items.splice(i < 0 ? Dd.items.length : i + 1, 0, { ex: 'side_plank', sets: 3, lo: 30, hi: 40, rest: restOf('side_plank'), ss: true }); }
+  }
   if (D.program.v !== PROGRAM_V) { D.program.v = PROGRAM_V; await dbPut('kv', { id: 'program', val: D.program }); }
   D.active = get('active') || null;
   D.insights = get('insights') || { weekly: [], plateaus: [] };
