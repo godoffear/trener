@@ -83,6 +83,8 @@ async function dbLoad() {
     if (C && C.name === 'Плечи и руки' && !C.items.some(x => x.ex === 'cable_woodchop')) C.items.push({ ex: 'cable_woodchop', sets: 3, lo: 10, hi: 12, rest: restOf('cable_woodchop') });
     if (Dd && Dd.name === 'Верх: грудь, спина, дельты' && !Dd.items.some(x => x.ex === 'side_plank')) { const i = Dd.items.findIndex(x => x.ex === 'cable_lat_raise'); Dd.items.splice(i < 0 ? Dd.items.length : i + 1, 0, { ex: 'side_plank', sets: 3, lo: 30, hi: 40, rest: restOf('side_plank'), ss: true }); }
   }
+  // v17 → v18 (41.0): в четверг (C) дровосек на блоке заменён боковыми наклонами с гантелью
+  if (D.program.v < 18) { const C = D.program.days.C; if (C && C.name === 'Плечи и руки') for (const x of C.items) if (x.ex === 'cable_woodchop') { x.ex = 'db_side_bend'; x.sets = 3; x.lo = 12; x.hi = 15; x.rest = restOf('db_side_bend'); delete x.step; } }
   if (D.program.v !== PROGRAM_V) { D.program.v = PROGRAM_V; await dbPut('kv', { id: 'program', val: D.program }); }
   D.active = get('active') || null;
   D.insights = get('insights') || { weekly: [], plateaus: [] };
