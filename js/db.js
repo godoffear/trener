@@ -85,6 +85,8 @@ async function dbLoad() {
   }
   // v17 → v18 (41.0): в четверг (C) дровосек на блоке заменён боковыми наклонами с гантелью
   if (D.program.v < 18) { const C = D.program.days.C; if (C && C.name === 'Плечи и руки') for (const x of C.items) if (x.ex === 'cable_woodchop') { x.ex = 'db_side_bend'; x.sets = 3; x.lo = 12; x.hi = 15; x.rest = restOf('db_side_bend'); delete x.step; } }
+  // v18 → v19 (42.0): в четверге (C) подъёмы в стороны на блоке — 3 подхода вместо 4
+  if (D.program.v < 19) { const C = D.program.days.C; if (C && C.name === 'Плечи и руки') for (const x of C.items) if (x.ex === 'cable_lat_raise' && x.sets === 4) x.sets = 3; }
   if (D.program.v !== PROGRAM_V) { D.program.v = PROGRAM_V; await dbPut('kv', { id: 'program', val: D.program }); }
   D.active = get('active') || null;
   D.insights = get('insights') || { weekly: [], plateaus: [] };
